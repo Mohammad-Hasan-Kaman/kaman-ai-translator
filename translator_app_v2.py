@@ -14,7 +14,7 @@ from google import genai
 from google.genai import types
 from google.genai.errors import APIError
 
-API_KEY = "API_KEY"  # کلید خود را اینجا بگذارید
+API_KEY = ""  # WARNING: Please replace this with your actual Google GenAI API key to run the application.
 
 # --- کلاس ترد برای ترجمه (جلوگیری از هنگ کردن گرافیک برنامه) ---
 class TranslationWorker(QThread):

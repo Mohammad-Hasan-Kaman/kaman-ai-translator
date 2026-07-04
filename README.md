@@ -1,6 +1,6 @@
-# 📄 AI PDF Translator
+# 📚 AI PDF & EPUB Translator
 
-> A powerful desktop application for translating PDF documents from English to academic Persian (Farsi) using Google Gemini AI. Built with PyQt6 for a modern, responsive interface.
+> A powerful desktop application for translating **PDF and EPUB** documents from English to academic Persian (Farsi) using Google Gemini AI. Built with PyQt6 for a modern, responsive interface.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![PyQt6](https://img.shields.io/badge/PyQt6-Modern%20UI-purple.svg?logo=qt)](https://riverbankcomputing.com/software/pyqt/)
@@ -22,14 +22,10 @@ This project is designed for **"Academic PDF Translation"** targeting students, 
 
 ## ✨ Key Features
 
-- 🌐 **Smart English-to-Persian Translation:**
-  - Powered by **Google Gemini AI** for context-aware, high-quality translation.
-  - Optimized for **academic, psychological, and philosophical texts** (formal, dignified prose).
-  - Meaning-for-meaning translation (not word-for-word) with proper Persian academic idioms.
-- 📄 **PDF Processing:**
-  - Extracts text from PDFs using **PyMuPDF**.
-  - Supports **page-by-page** or full-document translation.
-  - Preserves document structure via JSON output formatting.
+- 🌐 **Multi-Format Translation (PDF & EPUB):**
+  - Seamlessly translates both **PDF documents** and **EPUB ebooks**.
+  - Optimized for **academic, psychological, and philosophical texts** with formal, dignified Persian prose.
+  - Supports page-by-page or chapter-by-chapter translation.
 - 🎨 **Modern PyQt6 Interface:**
   - Clean, responsive UI with progress bars and real-time status updates.
   - Multi-threaded architecture to prevent UI freezing during heavy translation tasks.
