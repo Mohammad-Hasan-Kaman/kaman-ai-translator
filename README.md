@@ -43,7 +43,7 @@ This project is designed for **"Academic PDF Translation"** targeting students, 
 
 ### 1. For End Users (Compiled Executable)
 
-1.  Download the latest release (`translator_app_v2.exe`) from the [Releases](https://github.com/Mohammad-Hasan-Kaman/ai-pdf-translator/releases) page.
+1.  Download the latest release (`translator_app_v2.exe`) from the [Releases](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/releases/tag/v2.0.0) page.
 2.  Run the executable.
 3.  **Configure API Key:**
     - Open `translator_app_v2.py` in the source code (if you have it).
