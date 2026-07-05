@@ -6,6 +6,8 @@
 [![PyQt6](https://img.shields.io/badge/PyQt6-Modern%20UI-purple.svg?logo=qt)](https://riverbankcomputing.com/software/pyqt/)
 [![Google-Gemini](https://img.shields.io/badge/Google-Gemini%20AI-orange.svg?logo=google)](https://gemini.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Mohammad-Hasan-Kaman/kaman-ai-translator?color=blue)](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/releases)
+
 
 ---
 
