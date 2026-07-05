@@ -120,7 +120,7 @@ To make the app work, you need a **Google GenAI API Key**:
 
 ## 🤝 Contributing
 
-Found a bug or have a suggestion? Please open an [Issue](https://github.com/Mohammad-Hasan-Kaman/ai-pdf-translator/issues).
+Found a bug or have a suggestion? Please open an [Issue](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/issues).
 Contributions are welcome!
 
 ---
