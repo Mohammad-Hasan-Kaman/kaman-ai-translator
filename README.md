@@ -6,6 +6,8 @@
 [![PyQt6](https://img.shields.io/badge/PyQt6-Modern%20UI-purple.svg?logo=qt)](https://riverbankcomputing.com/software/pyqt/)
 [![Google-Gemini](https://img.shields.io/badge/Google-Gemini%20AI-orange.svg?logo=google)](https://gemini.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Mohammad-Hasan-Kaman/kaman-ai-translator?color=blue)](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/releases)
+
 
 ---
 
@@ -41,7 +43,7 @@ This project is designed for **"Academic PDF Translation"** targeting students, 
 
 ### 1. For End Users (Compiled Executable)
 
-1.  Download the latest release (`translator_app_v2.exe`) from the [Releases](https://github.com/Mohammad-Hasan-Kaman/ai-pdf-translator/releases) page.
+1.  Download the latest release (`translator_app_v2.exe`) from the [Releases](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/releases/tag/v2.0.0) page.
 2.  Run the executable.
 3.  **Configure API Key:**
     - Open `translator_app_v2.py` in the source code (if you have it).
@@ -118,7 +120,7 @@ To make the app work, you need a **Google GenAI API Key**:
 
 ## 🤝 Contributing
 
-Found a bug or have a suggestion? Please open an [Issue](https://github.com/Mohammad-Hasan-Kaman/ai-pdf-translator/issues).
+Found a bug or have a suggestion? Please open an [Issue](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/issues).
 Contributions are welcome!
 
 ---
