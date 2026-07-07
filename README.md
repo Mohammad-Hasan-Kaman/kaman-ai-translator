@@ -129,7 +129,7 @@ Contributions are welcome!
 
 If you find this tool useful, please give it a **star**! ⭐
 
-[![Star History](https://api.star-history.com/svg?repos=kaman-ai-translator&type=Date)](https://star-history.com/#kaman-ai-translator&Date)
+[![Stars](https://img.shields.io/github/stars/Mohammad-Hasan-Kaman/kaman-ai-translator?style=for-the-badge&logo=github&color=blue)](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/stargazers)
 
 ---
 *Maintained by Mohammad Hasan Kaman | Last updated: July 2026*
