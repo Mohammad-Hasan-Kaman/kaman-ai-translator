@@ -127,7 +127,7 @@ Contributions are welcome!
 
 If you find this tool useful, please give it a **star**! ⭐
 
-[![Star History](https://api.star-history.com/svg?repos=Mohammad-Hasan-Kaman/ai-pdf-translator&type=Date)](https://star-history.com/#Mohammad-Hasan-Kaman/ai-pdf-translator&Date)
+[![Star History](https://api.star-history.com/svg?repos=kaman-ai-translator&type=Date)](https://star-history.com/#kaman-ai-translator&Date)
 
 ---
 *Maintained by Mohammad Hasan Kaman | Last updated: July 2026*
