@@ -121,7 +121,7 @@ kaman-ai-translator/
 ├── kaman_core.py          # Core logic: config + encryption, prompts, chunking,
 │                          # structure analysis, engines, jobs, exports (no Qt)
 ├── tests/test_v3.py       # Offline test-suite (294 checks; no network needed)
-├── icon.png / icon..ico   # App icons
+├── icon.png / icon.ico / icon..ico   # App icons
 ├── requirements.txt
 ├── LICENSE                # MIT
 └── CONTRIBUTING.md
@@ -141,9 +141,20 @@ It covers prompts, chunking, structure detection, resume jobs, RTL geometry, the
 ## Building the Windows executable
 
 ```bash
-pip install auto-py-to-exe
-auto-py-to-exe -nu -o dist -i icon..ico -n kaman-ai-translator-3.0.0 -w --onefile translator_app_v3.py
+pip install pyinstaller
+pyinstaller --noconfirm --clean --onefile --windowed ^
+  --icon icon.ico ^
+  --add-data "icon.png;." ^
+  --collect-all google --collect-all google_genai ^
+  --name kaman-ai-translator-3.0.0 ^
+  translator_app_v3.py
 ```
+
+Notes:
+- `--add-data "icon.png;."` bundles the app icon **inside** the executable — without it the
+  window/taskbar icon is missing in packaged builds.
+- `--collect-all google` guarantees the full Gemini SDK (protobuf/grpc assets) is included.
+- On Linux/macOS replace the separator in `--add-data` with `:` (e.g. `icon.png:.`).
 
 ---
 
