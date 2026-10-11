@@ -475,10 +475,28 @@ class SettingsDialog(QDialog):
         layout.addLayout(self.row_model)
 
         self.lbl_encrypt = QLabel(
-            "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) روی سیستم شما ذخیره می‌شود."
+            "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. "
+            "تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:"
         )
         self.lbl_encrypt.setStyleSheet("color: #94a3b8; font-size: 9pt;")
         layout.addWidget(self.lbl_encrypt)
+
+        data_row = QHBoxLayout()
+        self.lbl_data_dir = QLabel(core.config_dir())
+        self.lbl_data_dir.setStyleSheet(
+            "color: #38bdf8; font-size: 9pt; font-family: Consolas, monospace;"
+        )
+        self.lbl_data_dir.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        data_row.addWidget(self.lbl_data_dir, 1)
+        self.btn_open_data = QPushButton("📂 باز کردن پوشه")
+        self.btn_open_data.setToolTip(
+            "پوشهٔ ذخیرهٔ تنظیمات، کلید رمزنگاری‌شده و ترجمه‌های شما را در ویندوز باز می‌کند."
+        )
+        self.btn_open_data.clicked.connect(self.open_data_folder)
+        data_row.addWidget(self.btn_open_data)
+        layout.addLayout(data_row)
 
         # --- تم ---
         theme_row = QHBoxLayout()
@@ -582,6 +600,12 @@ class SettingsDialog(QDialog):
         layout.addLayout(btn_row)
 
         self._on_provider_changed()
+
+    def open_data_folder(self):
+        """باز کردن پوشهٔ داده‌ها (%APPDATA%) در اکسپلورر ویندوز."""
+        path = core.config_dir()
+        os.makedirs(path, exist_ok=True)
+        os.startfile(path)
 
     def _on_provider_changed(self, *_args):
         is_openai = self.combo_provider.currentData() == "openai"

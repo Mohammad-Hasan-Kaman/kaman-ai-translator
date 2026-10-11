@@ -1131,6 +1131,18 @@ check("headings editor has example placeholder",
 check("editor hint explains purpose",
       "پرامپت" in (dlgV.lbl_editor_hint.text() or ""))
 
+print("== W. افشاگری محل ذخیرهٔ داده‌ها در اپ ==")
+dlgW = t3.SettingsDialog(win.cfg, win, job=win.job)
+check("settings show the exact data folder path",
+      k.config_dir() in dlgW.lbl_data_dir.text(), dlgW.lbl_data_dir.text())
+check("privacy label explains encryption + local storage",
+      "رمزنگاری" in dlgW.lbl_encrypt.text() and "رایانهٔ شما" in dlgW.lbl_encrypt.text())
+check("open-data-folder button exists", hasattr(dlgW, "btn_open_data"))
+check("open-data-folder wired to slot",
+      "open_data_folder" in _inspect3.getsource(t3.SettingsDialog.__init__))
+check("slot opens Explorer via startfile",
+      "startfile" in _inspect3.getsource(t3.SettingsDialog.open_data_folder))
+
 print()
 if failures:
     print(f"FAILED: {len(failures)} -> {failures}")
