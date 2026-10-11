@@ -1,60 +1,164 @@
+<div dir="ltr">
+
 # Kaman AI Translator
 
-**A Persian-first desktop app that translates PDF & EPUB books and papers into fluent, academic Persian (and Persian → English) — one page or an entire book, fully automated.**
+**A Persian-first desktop studio that turns PDF & EPUB books into fluent, academic Persian — one page or an entire book, with a quality pipeline built for real, long documents.**
 
-![version](https://img.shields.io/badge/version-3.0.0-blue)
-![python](https://img.shields.io/badge/python-3.11%2B-orange)
-![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-294%20offline%20checks-brightgreen)
+<p align="center">
+  <img src="icon.png" width="128" alt="Kaman AI Translator icon">
+</p>
 
-> **v3.0.0 is a complete rewrite** of the original single-page app: whole-book automation, a quality-engine for long documents, an in-app settings system with encrypted API keys, and a 100% RTL Persian interface. See the [release notes](../../releases) for the full changelog.
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/Mohammad-Hasan-Kaman/kaman-ai-translator?label=release&color=blue" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
+  <img src="https://img.shields.io/badge/python-3.11%2B-orange?logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/UI-PyQt6%20·%20100%25%20RTL-3b82f6" alt="UI: PyQt6, 100% RTL">
+  <img src="https://img.shields.io/badge/tests-294%20offline%20checks-brightgreen" alt="294 offline tests">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+</p>
 
 ---
 
-## Highlights
+## Table of contents
 
-### 📚 Whole-book automation
-- Translate an **entire book or a page range** with one click; every finished page is saved instantly.
-- **Pause / Resume / Cancel** at any time — nothing is lost.
-- The view **follows the worker live**, showing each page as it is being translated, while page navigation stays fully unlocked.
-- **Resume or restart:** when saved pages exist, the dialog asks whether to continue from the first unfinished page or re-translate everything from scratch.
-- Editing ⚙️ Settings is allowed **while paused** (and after a quota stop) — changes apply from the very next page.
-- Optional **request delay** to stay under rate limits.
+- [Why](#why)
+- [Features](#features)
+  - [Whole-book automation](#1-whole-book-automation)
+  - [Quality engine](#2-quality-engine)
+  - [Engines & providers](#3-engines--providers)
+  - [Security](#4-security)
+  - [Interface](#5-interface)
+  - [Save & export](#6-save--export)
+- [How it works](#how-it-works)
+- [Privacy & data](#privacy--data)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Settings reference](#settings-reference)
+- [Building the Windows executable](#building-the-windows-executable)
+- [Testing](#testing)
+- [Project structure](#project-structure)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
-### 🧠 Quality engine (built for long, real books)
-- **Smart automatic chunking** at paragraph boundaries with a **rolling context tail**, so chapter-long text stays consistent from the first page to the last.
-- **Book-specific structure template:** font hierarchy, chapter headings and recurring section labels (e.g. “Did you know?”, “Activities”) are detected per book and injected into the prompt so every label is translated *the same way* throughout the book. Three independent switches in Settings: auto-analyze on open (free, local), an optional **AI deep pass** (one API request), and a **manual template editor**.
-- **High-accuracy page reading:** repeated running headers / page numbers are detected and excluded from the text sent to the model; hyphen-broken words (`exam-` + `ple`) are rejoined; list numbers and mid-text formulas are protected.
-- **Prompts enforce completeness:** never omit, never summarize — structure, numbers, citations (`[12]`) and equations are preserved, with one consistent term per concept.
-- **Automatic QC review loop** (optional, doubles API cost): the model compares each translation against the source, flags meaning drift and omissions, and returns a corrected translation.
-- **Scanned pages** are translated through image-based OCR instead of being skipped.
+---
 
-### 🔁 Two-way translation
-- A dedicated language bar with explicit *Source* and *Target* selectors (English ⇄ Persian). Changing either one flips the other automatically; the choice is remembered across sessions.
+## Why
 
-### 🔌 Any engine you want
-- **Google Gemini** (official SDK), or
-- **Any OpenAI-compatible endpoint** — local servers (Ollama, LM Studio, …) or cloud aggregators.
-- Built-in **connection test**, retry-on-broken-JSON, and automatic fallback if the model replies with raw JSON instead of prose.
-- The API key is entered once in the app and stored **encrypted with Windows DPAPI** — it never appears in code, in the repository, or on disk in plain text.
+Translating a 300-page book with a chat window does not work: context windows are limited, quality drifts from chapter to chapter, headers get translated as content, and one crash loses everything. **Kaman AI Translator** was built around exactly those failure modes:
 
-### 💾 Save & export
-- Each translated page is auto-saved to a per-file job (resume works across restarts).
-- Export the current page (**TXT**), the whole book (**Markdown**), or a complete **RTL HTML book with page images** (open in a browser → Print → Save as PDF).
-- Per-page **“Reviewed ✓”** human-approval checkbox with live statistics (translated vs. reviewed).
+| Problem with naive AI translation | What this app does |
+|---|---|
+| The model truncates or summarizes long input | Paragraph-level smart chunking with a rolling context tail — every chunk is translated **completely** |
+| Chapter headers & page numbers become translated garbage | Per-book detection of repeated headers/footers/page numbers — they never reach the model |
+| The same label is translated five different ways | A per-book **structure template** (headings + recurring labels) is injected into every prompt |
+| One wrong API call loses an hour of work | Every finished page is saved instantly; resume works across restarts and updates |
+| You cannot pause, check, or correct anything | Pause/Resume/Cancel, a live view of the page being translated, and a per-page **“Reviewed ✓”** human approval mark |
+| The key sits in the source code | In-app settings with the key encrypted by **Windows DPAPI** — never in code, never in plain text |
 
-### 🇮🇷 Persian-first, 100% RTL interface
-- The whole UI is right-to-left with Persian numerals; themes: **System / Dark / Light**.
+---
+
+## Features
+
+### 1. Whole-book automation
+
+- **Batch translation** of an entire book or any page range — press once and walk away.
+- **Resume vs. restart:** when saved pages exist, the dialog asks whether to continue from the first unfinished page or re-translate the whole book from scratch.
+- **Pause / Resume / Cancel** with instant state save; after a quota stop, “Resume” continues from the same page.
+- **Live page following:** the app displays the page currently being translated (image or extracted text) while **page navigation stays fully unlocked**; if you browse manually, auto-following steps aside.
+- **Settings remain editable while paused** (and after a quota stop) — a new key, model or endpoint applies from the very next page.
+- Optional **request delay** between calls for rate-limited providers.
+- **Scanned pages** are not skipped: they are translated through image-based OCR.
+
+### 2. Quality engine
+
+- **Smart chunking** splits at paragraph boundaries (never mid-sentence) with a configurable character budget.
+- **Rolling context tail:** each chunk carries the end of the previous translation, so terminology and flow stay consistent across a whole chapter.
+- **Book-specific structure template:**
+  - font hierarchy, chapter headings and **recurring section labels** (“Did you know?”, “Activities”, …) are detected **per book** (free, local analysis),
+  - injected into every prompt so each label is translated **the same way on every page**,
+  - editable manually in *Settings → Template editor*,
+  - optional **AI deep pass** (one extra request that reads the table of contents).
+- **High-accuracy reading:**
+  - repeated running headers / page numbers are excluded from the model input,
+  - hyphen-broken words are rejoined (`exam-` + `ple` → `example`),
+  - list numbers and mid-text formulas are protected.
+- **Completeness-enforcing prompts:** no omissions, no summaries; paragraph structure, numbers, equations and citation markers (`[12]`) are preserved; one consistent term per concept.
+- **Automatic QC review loop** (optional): each translation is compared against the source; meaning drift and omissions are flagged and corrected (doubles API usage).
+- **JSON-safety:** raw-JSON model replies are detected, unwrapped and cleaned — you never see JSON garbage in the output.
+- **Bidirectional:** English ⇄ Persian with a dedicated language bar; the direction is remembered across sessions.
+
+### 3. Engines & providers
+
+- **Google Gemini** (official SDK), or **any OpenAI-compatible endpoint** — Ollama / LM Studio / llama.cpp locally, or cloud aggregators.
+- Built-in **Test connection** with a clear success/failure report.
+- Automatic **retry** on transient failures and quota detection with a safe pause.
+
+### 4. Security
+
+- The API key is entered once, masked in the UI, and stored **encrypted with Windows DPAPI** (tied to your Windows account).
+- The key never appears in the source code, in the repository, in releases, or in logs.
+- No telemetry, no update-checkers, no background network activity beyond the provider **you** configured.
+
+### 5. Interface
+
+- **100% right-to-left Persian UI** with Persian numerals — every dialog, menu and alignment.
+- Themes: **System / Dark / Light**.
+- Clear control states: the **Copy** button is blue when the page is ready and gray otherwise; every action carries a tooltip explaining when to use it.
+- Progress percentage follows RTL (fills from the right, number on the right).
+- Live statistics: translated pages vs. reviewed pages of the current book.
+
+### 6. Save & export
+
+- Per-page auto-save to a per-file job store (resume-safe across restarts and app updates).
+- Export the current page as **TXT**, the whole book as **Markdown**, or a complete **RTL HTML book with page images** — open it in any browser and use *Print → Save as PDF* for a finished Persian PDF.
+- Per-page **“Reviewed ✓”** human-approval checkbox that feeds the statistics and your final quality check.
+
+---
+
+## How it works
+
+```
+PDF / EPUB page
+   │  extraction — reading order, de-hyphenation, header/footer removal
+   ▼
+smart chunking (paragraph boundaries, configurable budget)
+   │  per chunk: prompt = source text
+   │             + rolling context tail      (consistency)
+   │             + book structure template   (headings & recurring labels)
+   │             + completeness rules        (never omit / never summarize)
+   ▼
+provider (Gemini or any OpenAI-compatible server)
+   │  JSON-safe parsing with raw-JSON fallback
+   ▼
+optional QC pass — translation compared against the source & corrected
+   │
+   ▼
+per-page save (resume-safe job store)  →  TXT / Markdown / RTL HTML export
+```
+
+The UI runs on `QThread` workers — translation, structure analysis and exports never freeze the window.
+
+---
+
+## Privacy & data
+
+- Everything lives **only on your PC**, under `%APPDATA%\kaman-ai-translator\`:
+  - `config.json` — settings + the API key **encrypted with Windows DPAPI**,
+  - `jobs\<hash>.json` — your translations and review marks, one file per book (keyed by the file path).
+- The only network traffic is from your computer **to the provider you configured**.
+- Nothing personal is embedded in the source code, the releases or the executable — verified before every release.
 
 ---
 
 ## Install
 
 ### Option A — Windows executable (recommended)
-1. Download `kaman-ai-translator-3.0.0.exe` from the [Releases](../../releases) page.
-2. Run it — no Python required.
+
+Download `kaman-ai-translator-3.0.0.exe` from the [latest release](../../releases/latest) and run it. No Python required.
 
 ### Option B — Run from source
+
 ```bash
 git clone https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator.git
 cd kaman-ai-translator
@@ -64,79 +168,37 @@ python translator_app_v3.py
 
 ---
 
-## Getting started
+## Quick start
 
-1. **⚙️ Settings** → choose the engine (Gemini or OpenAI-compatible), paste your API key, set the model name, press **Test connection**.
-2. **📂 انتخاب کتاب** → open a PDF or EPUB.
-3. Use **ترجمهٔ این صفحه** for a single page, or **ترجمهٔ کل کتاب** for the whole book:
-   - pick the range,
-   - keep *analyze book structure* on (free, local),
-   - enable the *QC review loop* if you want higher quality at double cost,
-   - set a delay if your provider rate-limits you,
-   - choose **continue** or **re-translate from scratch** when saved pages exist.
-4. During a run: **⏸ توقف** pauses (Settings becomes editable), **■ لغو** cancels safely; the page being translated is shown automatically, but you can browse freely.
-5. When a page finishes, read it, tick **✓ بازبینی شد** if you approve it, then **📋 کپی** or export the book.
+1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, set the model name, press **Test connection**.
+2. **📂 انتخاب کتاب (PDF / EPUB)** → open your book.
+3. **Single page:** *ترجمهٔ این صفحه* · **Whole book:** *ترجمهٔ کل کتاب* and in the dialog:
+   - choose the page range,
+   - keep *analyze book structure* on (free & local),
+   - enable the *QC review loop* for maximum quality (double API cost),
+   - set a delay if your provider rate-limits,
+   - decide **continue** or **re-translate from scratch** when saved pages exist.
+4. While it runs: **⏸ توقف** pauses (Settings becomes editable), **■ لغو** cancels safely, and the current page follows along automatically.
+5. When a page finishes: read it → tick **✓ بازبینی شد** if approved → **📋 کپی** or export the whole book.
 
-### Settings reference
-| Setting | What it does |
+---
+
+## Settings reference
+
+| Setting | Description |
 |---|---|
-| Engine / Base URL / Model / API key | Your translation provider. The key is encrypted with Windows DPAPI and stored only in your `%APPDATA%\kaman-ai-translator\`. |
-| Theme | System (follows Windows) / Dark / Light |
-| *Auto-analyze structure on file open* | Free, fully local detection of headings and recurring labels of the opened book. |
-| *AI deep structure pass* | One extra API request that reads the table of contents and extracts headings/labels/summary. |
-| *Show Template editor* | Two text areas (headings / recurring labels, one item per line) saved **per open book** — they steer term consistency in the prompt. |
-| Chunk size / context tail / delay | Advanced batching parameters of the translation pipeline. |
+| Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
+| Base URL | Endpoint of an OpenAI-compatible server (ignored for Gemini). |
+| Model | Model name, e.g. `gemini-2.5-flash` or a local model id. |
+| API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
+| Theme | System / Dark / Light. |
+| Auto-analyze structure on file open | Free, fully local detection of headings & recurring labels of the opened book. |
+| AI deep structure pass | One extra API request that reads the table of contents and extracts headings, labels and a summary. |
+| Show Template editor | Two text areas (headings / recurring labels — one item per line) saved **per open book**; steers term consistency in every prompt. |
+| Chunk size / context tail | Advanced parameters of the translation pipeline. |
+| Request delay | Pause between API calls (0–30 s). |
 
 ---
-
-## How the translation stays accurate
-
-```
-PDF/EPUB page
-   └─ extraction (reading order, de-hyphenation, header/footer removal)
-        └─ smart chunking at paragraph boundaries
-             └─ per chunk: prompt = source + rolling context + book template
-                  └─ response parsed (JSON-safe, raw-JSON fallback)
-                       └─ optional QC pass vs. the source
-                            └─ page saved → resume-safe job store
-```
-
-The API is called **only** for the text of the page itself — headers, page numbers and duplicates never reach the model.
-
----
-
-## Data & privacy
-
-- Your API key, settings, translations and review marks live **only on your machine**, in `%APPDATA%\kaman-ai-translator\` (the key is encrypted with Windows DPAPI).
-- There is **no telemetry** and no server of ours: the only network traffic goes from your computer **to the provider you configured**.
-- Nothing personal is bundled into the source code, the releases, or the Windows executable.
-
----
-
-## Project layout
-
-```
-kaman-ai-translator/
-├── translator_app_v3.py   # PyQt6 UI & background workers (entry point)
-├── kaman_core.py          # Core logic: config + encryption, prompts, chunking,
-│                          # structure analysis, engines, jobs, exports (no Qt)
-├── tests/test_v3.py       # Offline test-suite (294 checks; no network needed)
-├── icon.png / icon.ico / icon..ico   # App icons
-├── requirements.txt
-├── LICENSE                # MIT
-└── CONTRIBUTING.md
-```
-
-## Running the tests
-
-The suite is fully offline (fake engines, temporary profiles):
-
-```bash
-python tests/test_v3.py
-# expected: ALL V3 TESTS PASSED
-```
-
-It covers prompts, chunking, structure detection, resume jobs, RTL geometry, the batch UI state machine and the export pipeline.
 
 ## Building the Windows executable
 
@@ -150,18 +212,73 @@ pyinstaller --noconfirm --clean --onefile --windowed ^
   translator_app_v3.py
 ```
 
-Notes:
-- `--add-data "icon.png;."` bundles the app icon **inside** the executable — without it the
-  window/taskbar icon is missing in packaged builds.
-- `--collect-all google` guarantees the full Gemini SDK (protobuf/grpc assets) is included.
-- On Linux/macOS replace the separator in `--add-data` with `:` (e.g. `icon.png:.`).
+> - `--add-data "icon.png;."` bundles the app icon **inside** the executable — without it the window/taskbar icon is missing in packaged builds.
+> - `--collect-all google` guarantees the full Gemini SDK (protobuf/grpc assets) is included.
+> - On Linux/macOS use `:` as the `--add-data` separator (e.g. `icon.png:.`).
+
+---
+
+## Testing
+
+The suite is **fully offline** — fake engines, temporary profiles, no network, no API key:
+
+```bash
+python tests/test_v3.py
+# expected: ALL V3 TESTS PASSED  (294 checks)
+```
+
+Covered: prompts & JSON parsing, chunking and context rolling, structure detection & template merging, header/footer removal, job store resume/restart, RTL geometry of every screen, the batch UI state machine (pause/cancel/settings-while-paused), exports, and the encrypted-config round-trip.
+
+---
+
+## Project structure
+
+```
+kaman-ai-translator/
+├── translator_app_v3.py   # PyQt6 UI & QThread workers (entry point)
+│                           #   batch engine, live view, dialogs, themes
+├── kaman_core.py          # Qt-free core: config + DPAPI encryption,
+│                           #   prompts, chunking, structure analysis,
+│                           #   engines (Gemini / OpenAI-compatible),
+│                           #   job store, exporters
+├── tests/test_v3.py       # 294-check offline test-suite
+├── icon.png / icon.ico / icon..ico
+├── requirements.txt
+├── LICENSE
+└── CONTRIBUTING.md
+```
+
+The core is deliberately **Qt-free**, which is what makes the whole pipeline testable headlessly.
+
+---
+
+## Roadmap
+
+Ideas under consideration — feedback and PRs welcome:
+
+- [ ] Linux & macOS support (the core is already portable; DPAPI needs a keyring backend)
+- [ ] Glossary export/import (term consistency across several books)
+- [ ] Side-by-side source/target view during batch runs
+- [ ] Direct PDF output (embedded RTL font rendering)
+- [ ] Per-chapter progress history and throughput statistics
 
 ---
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues, bug reports and pull requests are welcome — please read [CONTRIBUTING.md](CONTRIBUTING.md) first (it covers the offline test requirement, the RTL conventions and the security rules).
 
 ## License
 
-[MIT](LICENSE) © Mohammad Hasan Kaman.
+Distributed under the [MIT License](LICENSE).
+Free to use, modify and share — even commercially.
+
+---
+
+<div dir="rtl">
+
+### سپاس از ستاره ⭐
+
+اگر این ابزار برایتان مفید بود، یک ستاره بدهید — بزرگ‌ترین حمایت از توسعهٔ پروژه است.
+
+</div>
