@@ -2,7 +2,7 @@
 
 # Kaman AI Translator
 
-**A Persian-first desktop studio that turns PDF & EPUB books into fluent, academic Persian — one page or an entire book, with a quality pipeline built for real, long documents.**
+**A Persian-first desktop studio that turns PDF & EPUB books into fluent, academic Persian — and back into English — one page or an entire book, with a quality pipeline built for real, long documents.**
 
 <p align="center">
   <img src="icon.png" width="128" alt="Kaman AI Translator icon">
