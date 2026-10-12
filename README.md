@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/python-3.11%2B-orange?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/UI-PyQt6%20·%20100%25%20RTL-3b82f6" alt="UI: PyQt6, 100% RTL">
-  <img src="https://img.shields.io/badge/tests-299%20offline%20checks-brightgreen" alt="303 offline tests">
+  <img src="https://img.shields.io/badge/tests-303%20offline%20checks-brightgreen" alt="303 offline tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
@@ -145,7 +145,8 @@ The UI runs on `QThread` workers — translation, structure analysis and exports
 
 - Everything lives **only on your PC**, under `%APPDATA%\kaman-ai-translator\`:
   - `config.json` — settings + the API key **encrypted with Windows DPAPI**,
-  - `jobs\<hash>.json` — your translations and review marks, one file per book (keyed by the file path).
+  - `jobs\<hash>.json` — your translations and review marks, one file per book (keyed by the file path),
+  - `encrypt_fallback.log` — only written if DPAPI is ever unavailable: timestamp plus the error message, **never any secret** (the key then falls back to clearly-labelled base64 storage so the app keeps working).
 - The in-app **Settings** dialog shows this exact folder (copyable) and has an **“open folder” button**, so nothing is ever hidden from you.
 - The only network traffic is from your computer **to the provider you configured**.
 - Nothing personal is embedded in the source code, the releases or the executable — verified before every release.
