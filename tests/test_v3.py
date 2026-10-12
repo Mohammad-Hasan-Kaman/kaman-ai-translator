@@ -1143,6 +1143,31 @@ check("open-data-folder wired to slot",
 check("slot opens Explorer via startfile",
       "startfile" in _inspect3.getsource(t3.SettingsDialog.open_data_folder))
 
+print("== X. رفع بلعیدن بی‌صدا در encrypt_secret (بازخورد کد) ==")
+_orig_win_crypt = k._win_crypt
+
+
+def _boom_dpapi(*_a, **_k):
+    raise OSError("simulated DPAPI failure")
+
+
+k._win_crypt = _boom_dpapi
+try:
+    stored_x = k.encrypt_secret("sk-test-fallback-123")
+finally:
+    k._win_crypt = _orig_win_crypt
+check("DPAPI failure falls back to labelled base64",
+      stored_x.startswith(k._PREFIX_B64), stored_x[:16])
+check("fallback value still round-trips",
+      k.decrypt_secret(stored_x) == "sk-test-fallback-123")
+_log_x = os.path.join(k.config_dir(), "encrypt_fallback.log")
+check("fallback reason written to log (error not swallowed)",
+      os.path.exists(_log_x))
+if os.path.exists(_log_x):
+    _txt_x = open(_log_x, encoding="utf-8").read()
+    check("log contains the original error message",
+          "simulated DPAPI failure" in _txt_x)
+
 print()
 if failures:
     print(f"FAILED: {len(failures)} -> {failures}")

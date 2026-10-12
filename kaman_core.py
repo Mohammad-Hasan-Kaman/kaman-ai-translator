@@ -102,6 +102,25 @@ def _win_crypt(data: bytes, entropy: bytes, unprotect: bool) -> bytes:
         ctypes.WinDLL("kernel32", use_last_error=True).LocalFree(out_blob.pbData)
 
 
+def _log_encrypt_fallback(exc: Exception) -> None:
+    """ثبت علت ناتوانی DPAPI تا خطا بی‌صدا بلعیده نشود.
+
+    خروجی در فایل کوچکی کنار تنظیمات نوشته می‌شود (بدون هیچ دادهٔ محرمانه —
+    فقط زمان، علت و پیام خطا).
+    """
+    try:
+        from datetime import datetime, timezone
+
+        path = os.path.join(config_dir(), "encrypt_fallback.log")
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(
+                f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "
+                f"DPAPI unavailable -> fell back to base64 storage: {exc!r}\n"
+            )
+    except OSError:
+        pass  # حتی لاگ هم در دسترس نبود؛ رفتار قبلی (ادامهٔ ذخیره‌سازی) حفظ می‌شود
+
+
 def encrypt_secret(plain: str) -> str:
     """رمزنگاری کلید API برای ذخیره روی دیسک (DPAPI ویندوز؛ بدون وابستگی اضافه)."""
     if not plain:
@@ -110,8 +129,10 @@ def encrypt_secret(plain: str) -> str:
         try:
             blob = _win_crypt(plain.encode("utf-8"), _DPAPI_ENTROPY, unprotect=False)
             return _PREFIX_DPAPI + base64.b64encode(blob).decode("ascii")
-        except Exception:
-            pass  # اگر DPAPI در دسترس نبود، به رمزنگاری ضعیف‌تر برمی‌گردیم
+        except Exception as exc:
+            # اگر DPAPI در دسترس نبود، به رمزنگاری ضعیف‌تر برمی‌گردیم —
+            # ولی علت خطا را بی‌صدا دور نمی‌ریزیم: در encrypt_fallback.log ثبت می‌شود.
+            _log_encrypt_fallback(exc)
     return _PREFIX_B64 + base64.b64encode(plain.encode("utf-8")).decode("ascii")
 
 

@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/python-3.11%2B-orange?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/UI-PyQt6%20·%20100%25%20RTL-3b82f6" alt="UI: PyQt6, 100% RTL">
-  <img src="https://img.shields.io/badge/tests-299%20offline%20checks-brightgreen" alt="299 offline tests">
+  <img src="https://img.shields.io/badge/tests-299%20offline%20checks-brightgreen" alt="303 offline tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
@@ -225,7 +225,7 @@ The suite is **fully offline** — fake engines, temporary profiles, no network,
 
 ```bash
 python tests/test_v3.py
-# expected: ALL V3 TESTS PASSED  (299 checks)
+# expected: ALL V3 TESTS PASSED  (303 checks)
 ```
 
 Covered: prompts & JSON parsing, chunking and context rolling, structure detection & template merging, header/footer removal, job store resume/restart, RTL geometry of every screen, the batch UI state machine (pause/cancel/settings-while-paused), exports, and the encrypted-config round-trip.
@@ -242,7 +242,7 @@ kaman-ai-translator/
 │                           #   prompts, chunking, structure analysis,
 │                           #   engines (Gemini / OpenAI-compatible),
 │                           #   job store, exporters
-├── tests/test_v3.py       # 299-check offline test-suite
+├── tests/test_v3.py       # 303-check offline test-suite
 ├── icon.png / icon.ico / icon..ico
 ├── requirements.txt
 ├── LICENSE
