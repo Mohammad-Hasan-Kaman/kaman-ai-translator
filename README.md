@@ -244,7 +244,7 @@ kaman-ai-translator/
 │                           #   engines (Gemini / OpenAI-compatible),
 │                           #   job store, exporters
 ├── tests/test_v3.py       # 303-check offline test-suite
-├── icon.png / icon.ico / icon..ico
+├── icon.png / icon.ico
 ├── requirements.txt
 ├── LICENSE
 └── CONTRIBUTING.md
@@ -277,10 +277,8 @@ Free to use, modify and share — even commercially.
 
 ---
 
-<div dir="rtl">
+---
 
-### سپاس از ستاره ⭐
+### ⭐ Thanks for the star
 
-اگر این ابزار برایتان مفید بود، یک ستاره بدهید — بزرگ‌ترین حمایت از توسعهٔ پروژه است.
-
-</div>
+If this tool is useful to you, please give it a star — the biggest support for continued development of the project.
