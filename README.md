@@ -173,15 +173,15 @@ python translator_app_v3.py
 ## Quick start
 
 1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, set the model name, press **Test connection**.
-2. **📂 انتخاب کتاب (PDF / EPUB)** → open your book.
-3. **Single page:** *ترجمهٔ این صفحه* · **Whole book:** *ترجمهٔ کل کتاب* and in the dialog:
+2. **📂 Open book (PDF / EPUB)** → open your book.
+3. **Single page:** *Translate this page* · **Whole book:** *Translate the whole book* and in the dialog:
    - choose the page range,
    - keep *analyze book structure* on (free & local),
    - enable the *QC review loop* for maximum quality (double API cost),
    - set a delay if your provider rate-limits,
    - decide **continue** or **re-translate from scratch** when saved pages exist.
-4. While it runs: **⏸ توقف** pauses (Settings becomes editable), **■ لغو** cancels safely, and the current page follows along automatically.
-5. When a page finishes: read it → tick **✓ بازبینی شد** if approved → **📋 کپی** or export the whole book.
+4. While it runs: **⏸ Pause** pauses (Settings becomes editable), **■ Cancel** cancels safely, and the current page follows along automatically.
+5. When a page finishes: read it → tick **✓ Reviewed** if approved → **📋 Copy** or export the whole book.
 
 ---
 
