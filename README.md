@@ -1,4 +1,4 @@
-![Telegram channel – @mohaka_programmer](assets/telegram-channel.jpg)
+![Kaman AI Translator v3.0.0 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
 
 ### 🌐 Telegram: [@mohaka_programmer](https://t.me/mohaka_programmer)
 
