@@ -116,6 +116,7 @@ The translator also works fully offline against a local OpenAI-compatible server
 - **LM Studio:** load a model, then start the server from the **Developer** tab before connecting.
 - **The API key is a placeholder for these two servers.** By default, Ollama and LM Studio do not authenticate local requests, so the key is never checked — it only has to be non-empty, because the OpenAI client requires one.
 - **This is not universal.** Some local servers and gateways enforce their own API key when authentication is enabled on them (for example 9Router, or vLLM started with `--api-key`). With those, enter the real key the server issued instead of a placeholder.
+- **Raise the context window (Ollama).** Ollama allocates a small context by default (4,096 tokens on machines with less than 24 GiB of VRAM), and long prompts are truncated silently — a book chunk plus its context tail easily overflows it, which surfaces as invalid-JSON translation errors. The OpenAI-compatible API has no context-size field, so raise it on the Ollama side: set `OLLAMA_CONTEXT_LENGTH=16384` before starting the server, or bake it into a custom model with a Modelfile (`FROM <model>` plus `PARAMETER num_ctx 16384`, then `ollama create <name> -f Modelfile`) and use that model name in Settings.
 
 Press **Test connection** after entering the values; a success report means the local model is reachable and ready.
 
