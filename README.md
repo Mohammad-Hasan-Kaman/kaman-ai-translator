@@ -102,6 +102,23 @@ Translating a 300-page book with a chat window does not work: context windows ar
 - Built-in **Test connection** with a clear success/failure report.
 - Automatic **retry** on transient failures and quota detection with a safe pause.
 
+### Local servers (Ollama / LM Studio)
+
+The translator also works fully offline against a local OpenAI-compatible server. Start the server first, then use these values in **Settings**:
+
+| Setting | Ollama | LM Studio |
+|---|---|---|
+| Engine | OpenAI-compatible | OpenAI-compatible |
+| Base URL | `http://localhost:11434/v1` | `http://localhost:1234/v1` |
+| API Key | `ollama` (placeholder) | `lm-studio` (placeholder) |
+| Model | A model you pulled, e.g. `llama3.1` | The loaded model's id |
+
+- **LM Studio:** load a model, then start the server from the **Developer** tab before connecting.
+- **The API key is a placeholder for these two servers.** By default, Ollama and LM Studio do not authenticate local requests, so the key is never checked — it only has to be non-empty, because the OpenAI client requires one.
+- **This is not universal.** Some local servers and gateways enforce their own API key when authentication is enabled on them (for example 9Router, or vLLM started with `--api-key`). With those, enter the real key the server issued instead of a placeholder.
+
+Press **Test connection** after entering the values; a success report means the local model is reachable and ready.
+
 ### 4. Security
 
 - The API key is entered once, masked in the UI, and stored **encrypted with Windows DPAPI** (tied to your Windows account).
