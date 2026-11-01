@@ -24,7 +24,7 @@ from collections import Counter
 import pymupdf  # PyMuPDF (نام جدید؛ fitz فقط نام قدیمی است و هشدار می‌دهد)
 
 APP_NAME = "kaman-ai-translator"
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.1.0"
 
 # --------------------------------------------------------------------------
 # خطاهای قابل تشخیص
@@ -43,6 +43,98 @@ class CancelledError(Exception):
 
 
 # --------------------------------------------------------------------------
+# زبان پیام‌های هسته (هماهنگ با زبان رابط کاربری: fa | en)
+# --------------------------------------------------------------------------
+
+_UI_LANG = "fa"
+
+
+def set_language(lang):
+    global _UI_LANG
+    _UI_LANG = "en" if lang == "en" else "fa"
+
+
+def get_language():
+    return _UI_LANG
+
+
+_MSGS = {
+    "fa": {
+        "base_url_empty": "آدرس سرور (Base URL) خالی است.",
+        "model_empty": "نام مدل را وارد کنید (مثلاً llama3.2 یا qwen2.5:14b).",
+        "gemini_key_empty": "API key گوگل تنظیم نشده است. از دکمهٔ «تنظیمات» آن را وارد کنید.",
+        "gemini_key_missing": "API key گوگل تنظیم نشده است.",
+        "model_not_set": "نام مدل تنظیم نشده است (تنظیمات → مدل).",
+        "empty_response": "پاسخ خالی از سرور دریافت شد.",
+        "server_timeout": "زمان اتصال به سرور تمام شد (timeout).",
+        "server_error": "خطای سرور: {detail}",
+        "parse_error": (
+            "خروجی مدل قابل تحلیل نبود (JSON نامعتبر و body_text هم قابل استخراج نشد).\n"
+            "علت‌های محتمل:\n"
+            "۱. مدل برای خروجی ساخت‌یافته ضعیف است — مدلی قوی‌تر انتخاب کنید "
+            "(برای سرور لوکال مثلاً qwen2.5:14b یا بالاتر، یا موتور Gemini).\n"
+            "۲. پاسخ مدل نصفه قطع شده است — در Ollama پنجرهٔ کانتکست پیش‌فرض کوچک است؛ "
+            "num_ctx را بالا ببرید (مثلاً 16384) یا اندازهٔ تکه‌ها را کم کنید."
+        ),
+        "truncated_error": (
+            "پاسخ مدل نصفه قطع شد (finish_reason = length) — پنجرهٔ کانتکست مدل پر شده است.\n"
+            "راه‌حل: در Ollama مقدار num_ctx را بالا ببرید (مثلاً 16384، با Modelfile یا "
+            "OLLAMA_CONTEXT_LENGTH) یا مدلی با کانتکست بزرگ‌تر انتخاب کنید."
+        ),
+        "test_ok": "اتصال موفق است ✅ پاسخ سرور: {reply}",
+        "test_json_fail": (
+            "اتصال برقرار است، اما مدل خروجی ساخت‌یافته (JSON) برنگرداند.\n"
+            "برای ترجمهٔ کتاب، مدلی قوی‌تر لازم است (مثلاً qwen2.5:14b یا بالاتر)."
+        ),
+        "test_local_hint": (
+            "\n⚠️ سرور لوکال است: برای کتاب‌های طولانی، پنجرهٔ کانتکست را بالا ببرید "
+            "(در Ollama: ‏num_ctx‏ مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند."
+        ),
+        "test_fail": "اتصال ناموفق ❌\n{detail}",
+    },
+    "en": {
+        "base_url_empty": "The server address (Base URL) is empty.",
+        "model_empty": "Enter a model name (e.g. llama3.2 or qwen2.5:14b).",
+        "gemini_key_empty": "The Google API key is not set. Enter it from the Settings button.",
+        "gemini_key_missing": "The Google API key is not set.",
+        "model_not_set": "No model name is set (Settings → Model).",
+        "empty_response": "The server returned an empty response.",
+        "server_timeout": "The connection to the server timed out.",
+        "server_error": "Server error: {detail}",
+        "parse_error": (
+            "The model output could not be parsed (invalid JSON and no extractable body_text).\n"
+            "Likely causes:\n"
+            "1. The model is too weak for structured output — choose a stronger model "
+            "(for a local server, e.g. qwen2.5:14b or larger, or the Gemini engine).\n"
+            "2. The reply was cut off — Ollama's default context window is small; "
+            "raise num_ctx (e.g. 16384) or reduce the chunk size."
+        ),
+        "truncated_error": (
+            "The model reply was cut off (finish_reason = length) — the model's context window is full.\n"
+            "Fix: raise num_ctx in Ollama (e.g. 16384, via a Modelfile or "
+            "OLLAMA_CONTEXT_LENGTH), or choose a model with a larger context."
+        ),
+        "test_ok": "Connection OK ✅ Server reply: {reply}",
+        "test_json_fail": (
+            "The connection works, but the model did not return structured (JSON) output.\n"
+            "Book translation needs a stronger model (e.g. qwen2.5:14b or larger)."
+        ),
+        "test_local_hint": (
+            "\n⚠️ This is a local server: for long books, raise the context window "
+            "(in Ollama: num_ctx, e.g. 16384) or replies will be cut off."
+        ),
+        "test_fail": "Connection failed ❌\n{detail}",
+    },
+}
+
+
+def msg(key, **kwargs):
+    table = _MSGS.get(_UI_LANG, _MSGS["fa"])
+    text = table.get(key) or _MSGS["fa"][key]
+    return text.format(**kwargs) if kwargs else text
+
+
+# --------------------------------------------------------------------------
 # پیکربندی + رمزنگاری کلید API
 # --------------------------------------------------------------------------
 
@@ -51,7 +143,9 @@ CONFIG_DEFAULTS = {
     "provider": "gemini",                 # gemini | openai
     "base_url": "http://localhost:11434/v1",
     "model": "gemini-2.5-flash",
-    "direction": "en2fa",                 # en2fa | fa2en
+    "direction": "en2fa",                 # en2fa | fa2en | en2ar | ar2en | fa2ar | ar2fa
+    "ui_lang": "fa",                      # fa | en — زبان رابط کاربری
+    "profiles": {},                       # حافظهٔ جدا برای هر موتور (در load_config ساخته می‌شود)
     "theme": "system",                    # system | dark | light
     "temperature": 0.1,
     "chunk_max_chars": 6000,
@@ -183,45 +277,149 @@ def jobs_dir():
     return folder
 
 
+def default_profiles():
+    """حافظهٔ پیش‌فرض هر موتور: کلید، آدرس سرور و مدلِ مخصوص خودش."""
+    return {
+        "gemini": {"api_key": "", "base_url": "", "model": "gemini-2.5-flash"},
+        "openai": {
+            "api_key": "",
+            "base_url": "http://localhost:11434/v1",
+            "model": "",
+        },
+    }
+
+
+def _sync_active_profile(cfg):
+    """مقادیر تخت (موتور فعال) را داخل پروفایل همان موتور می‌نویسد."""
+    profiles = cfg.get("profiles")
+    if not isinstance(profiles, dict):
+        profiles = default_profiles()
+        cfg["profiles"] = profiles
+    provider = cfg.get("provider", "gemini")
+    slot = profiles.get(provider)
+    if not isinstance(slot, dict):
+        slot = dict(default_profiles().get(provider, {}))
+        profiles[provider] = slot
+    slot["api_key"] = cfg.get("api_key", "")
+    slot["base_url"] = cfg.get("base_url", "")
+    slot["model"] = cfg.get("model", "")
+    return cfg
+
+
+def switch_provider(cfg, new_provider):
+    """تعویض موتور: مقادیر فعلی در پروفایل موتور قبلی ذخیره می‌شود و
+    مقادیر ذخیره‌شدهٔ موتور جدید در فیلدهای تخت بارگذاری می‌شود —
+    پس هیچ مقداری (کلید/آدرس/مدل) از یک موتور به موتور دیگر نشت نمی‌کند
+    و با برگشتن به موتور قبلی، اطلاعاتش دقیقاً برمی‌گردد."""
+    _sync_active_profile(cfg)
+    slot = cfg["profiles"].get(new_provider)
+    if not isinstance(slot, dict):
+        slot = default_profiles()[new_provider]
+        cfg["profiles"][new_provider] = slot
+    cfg["provider"] = new_provider
+    cfg["api_key"] = slot.get("api_key", "")
+    cfg["base_url"] = slot.get("base_url", "")
+    cfg["model"] = slot.get("model", "")
+    return cfg
+
+
+def _ensure_profiles(cfg, stored_profiles=None):
+    """پروفایل‌ها را از دادهٔ ذخیره‌شده کامل می‌کند؛ مقادیر تختِ فعلی
+    (قالب قدیمیِ بدون پروفایل) به‌عنوان پروفایل موتور فعال مهاجرت می‌یابند."""
+    profiles = default_profiles()
+    if isinstance(stored_profiles, dict):
+        for name, slot in stored_profiles.items():
+            if name in profiles and isinstance(slot, dict):
+                for key in ("api_key", "base_url", "model"):
+                    if key in slot:
+                        profiles[name][key] = slot[key]
+    cfg["profiles"] = profiles
+    _sync_active_profile(cfg)
+    return cfg
+
+
+def _safe_decrypt(stored):
+    """رمزگشایی بدون کرش: کلیدی که روی حساب/ماشین دیگری ساخته شده (کانفیگ
+    کپی‌شده) نباید جلوی باز شدن برنامه را بگیرد — خالی برمی‌گردد تا کاربر
+    دوباره واردش کند."""
+    try:
+        return decrypt_secret(stored)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def load_config():
     cfg = dict(CONFIG_DEFAULTS)
     raw_key = ""
+    stored_profiles = None
     try:
         with open(config_file_path(), "r", encoding="utf-8") as fh:
             data = json.load(fh)
         if isinstance(data, dict):
-            cfg.update({k: v for k, v in data.items() if k in CONFIG_DEFAULTS})
+            cfg.update({
+                k: v for k, v in data.items()
+                if k in CONFIG_DEFAULTS and k != "profiles"
+            })
             raw_key = data.get("api_key", "")
+            stored_profiles = data.get("profiles")
     except (OSError, ValueError):
+        # کانفیگ خراب را کنار می‌گذاریم تا کلید رمزنگاری‌شده قابل بازیابی بماند
+        try:
+            os.replace(config_file_path(), config_file_path() + ".corrupt.bak")
+        except OSError:
+            pass
+        _ensure_profiles(cfg)
         return cfg
+
+    if isinstance(stored_profiles, dict):
+        decrypted = {}
+        for name, slot in stored_profiles.items():
+            if isinstance(slot, dict):
+                slot = dict(slot)
+                if "api_key" in slot:
+                    slot["api_key"] = _safe_decrypt(slot.get("api_key", ""))
+                decrypted[name] = slot
+        stored_profiles = decrypted
+    _ensure_profiles(cfg, stored_profiles)
 
     # مهاجرت: کلید قدیمیِ رمزنگاری‌نشده را همین حالا رمزنگاری و ذخیره می‌کنیم
     if raw_key and not is_encrypted(raw_key):
         cfg["api_key"] = raw_key
         save_config(cfg)
     else:
-        cfg["api_key"] = decrypt_secret(raw_key)
+        cfg["api_key"] = _safe_decrypt(raw_key)
+    _sync_active_profile(cfg)
     return cfg
 
 
 def save_config(cfg):
+    _sync_active_profile(cfg)
     disk = dict(cfg)
     disk["api_key"] = encrypt_secret(cfg.get("api_key", ""))
-    with open(config_file_path(), "w", encoding="utf-8") as fh:
+    profiles = {}
+    for name, slot in (cfg.get("profiles") or {}).items():
+        slot = dict(slot)
+        slot["api_key"] = encrypt_secret(slot.get("api_key", ""))
+        profiles[name] = slot
+    disk["profiles"] = profiles
+    path = config_file_path()
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(disk, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
 
 
 def validate_config(cfg):
-    """برگرداندن پیام خطای فارسی یا None اگر پیکربندی سالم است."""
+    """برگرداندن پیام خطا (به زبان رابط کاربری) یا None اگر پیکربندی سالم است."""
     provider = cfg.get("provider", "gemini")
     if provider == "openai":
         if not (cfg.get("base_url") or "").strip():
-            return "آدرس سرور (Base URL) خالی است."
+            return msg("base_url_empty")
         if not (cfg.get("model") or "").strip():
-            return "نام مدل را وارد کنید (مثلاً llama3.2 یا qwen2.5:14b)."
+            return msg("model_empty")
         return None
     if not (cfg.get("api_key") or "").strip():
-        return "API key گوگل تنظیم نشده است. از دکمهٔ «تنظیمات» آن را وارد کنید."
+        return msg("gemini_key_empty")
     return None
 
 
@@ -252,6 +450,7 @@ DIRECTIONS = {
         "source": "English",
         "target": "Persian (Farsi)",
         "rtl": True,
+        "source_rtl": False,
         "system": (
             "You are an elite academic translator specializing in psychology and philosophy books. "
             "Your translation must NOT sound like machine translation. "
@@ -283,6 +482,7 @@ DIRECTIONS = {
         "source": "Persian (Farsi)",
         "target": "English",
         "rtl": False,
+        "source_rtl": True,
         "system": (
             "You are an elite academic translator specializing in psychology and philosophy books, "
             "working from Persian (Farsi) into English. "
@@ -305,6 +505,131 @@ DIRECTIONS = {
             "title_or_headings": "🔖 Title",
             "subtitles": "🔍 Subtitle",
             "publisher": "🏢 Publisher",
+        },
+    },
+    "en2ar": {
+        "label": "انگلیسی ⟶ عربی",
+        "source": "English",
+        "target": "Arabic",
+        "rtl": True,
+        "source_rtl": False,
+        "system": (
+            "You are an elite academic translator specializing in psychology and philosophy books, "
+            "working from English into Arabic. "
+            "Your translation must NOT sound like machine translation. "
+            "Use fluent, dignified, formal Modern Standard Arabic (Fusha) academic prose.\n"
+            "CRITICAL RULES:\n"
+            "- Do not translate word-for-word. Translate meaning-for-meaning with appropriate "
+            "Arabic academic idioms.\n"
+            "- COMPLETENESS: translate EVERY sentence of the input — never omit, skip, summarize "
+            "or truncate, even if the text repeats or looks unusual.\n"
+            "- Preserve structure: paragraph breaks, headings, lists, captions, footnote markers "
+            "and emphasis must survive in the same order.\n"
+            "- Keep numbers, units, equations, variable names, code, URLs and citation markers "
+            "(like [12]) unchanged; translate only the words around them.\n"
+            "- Use ONE consistent Arabic equivalent for each key term throughout the book; when a "
+            "BOOK STRUCTURE CONTEXT is provided, follow it as the house style.\n"
+            "- If the text looks like table cells or figure captions, keep the cell separation and "
+            "caption labels intact.\n"
+            "- Keep the JSON structure perfectly clean."
+        ),
+        "labels": {
+            "authors": "✍️ المؤلف/المؤلفون",
+            "title_or_headings": "🔖 العنوان",
+            "subtitles": "🔍 العنوان الفرعي",
+            "publisher": "🏢 الناشر",
+        },
+    },
+    "ar2en": {
+        "label": "عربی ⟶ انگلیسی",
+        "source": "Arabic",
+        "target": "English",
+        "rtl": False,
+        "source_rtl": True,
+        "system": (
+            "You are an elite academic translator specializing in psychology and philosophy books, "
+            "working from Arabic into English. "
+            "Your translation must NOT sound like machine translation. "
+            "Write fluent, natural academic English prose.\n"
+            "CRITICAL RULES:\n"
+            "- Do not translate word-for-word. Translate meaning-for-meaning with idiomatic "
+            "academic English.\n"
+            "- COMPLETENESS: translate EVERY sentence of the input — never omit, skip, summarize "
+            "or truncate, even if the text repeats or looks unusual.\n"
+            "- Preserve structure: paragraph breaks, headings, lists, captions, footnote markers "
+            "and emphasis must survive in the same order.\n"
+            "- Keep numbers, units, equations, variable names, code, URLs and citation markers "
+            "(like [12]) unchanged; translate only the words around them.\n"
+            "- Use ONE consistent English equivalent for each key term throughout the book.\n"
+            "- Keep the JSON structure perfectly clean."
+        ),
+        "labels": {
+            "authors": "✍️ Author(s)",
+            "title_or_headings": "🔖 Title",
+            "subtitles": "🔍 Subtitle",
+            "publisher": "🏢 Publisher",
+        },
+    },
+    "fa2ar": {
+        "label": "فارسی ⟶ عربی",
+        "source": "Persian (Farsi)",
+        "target": "Arabic",
+        "rtl": True,
+        "source_rtl": True,
+        "system": (
+            "You are an elite academic translator specializing in psychology and philosophy books, "
+            "working from Persian (Farsi) into Arabic. "
+            "Your translation must NOT sound like machine translation. "
+            "Use fluent, dignified, formal Modern Standard Arabic (Fusha) academic prose.\n"
+            "CRITICAL RULES:\n"
+            "- Do not translate word-for-word. Translate meaning-for-meaning with appropriate "
+            "Arabic academic idioms.\n"
+            "- COMPLETENESS: translate EVERY sentence of the input — never omit, skip, summarize "
+            "or truncate, even if the text repeats or looks unusual.\n"
+            "- Preserve structure: paragraph breaks, headings, lists, captions, footnote markers "
+            "and emphasis must survive in the same order.\n"
+            "- Keep numbers, units, equations, variable names, code, URLs and citation markers "
+            "(like [12]) unchanged; translate only the words around them.\n"
+            "- Use ONE consistent Arabic equivalent for each key term throughout the book; when a "
+            "BOOK STRUCTURE CONTEXT is provided, follow it as the house style.\n"
+            "- Keep the JSON structure perfectly clean."
+        ),
+        "labels": {
+            "authors": "✍️ المؤلف/المؤلفون",
+            "title_or_headings": "🔖 العنوان",
+            "subtitles": "🔍 العنوان الفرعي",
+            "publisher": "🏢 الناشر",
+        },
+    },
+    "ar2fa": {
+        "label": "عربی ⟶ فارسی",
+        "source": "Arabic",
+        "target": "Persian (Farsi)",
+        "rtl": True,
+        "source_rtl": True,
+        "system": (
+            "You are an elite academic translator specializing in psychology and philosophy books, "
+            "working from Arabic into Persian (Farsi). "
+            "Your translation must NOT sound like machine translation. "
+            "Use fluent, dignified, and formal Persian (Farsi) academic prose.\n"
+            "CRITICAL RULES:\n"
+            "- Do not translate word-for-word. Translate meaning-for-meaning with appropriate "
+            "Persian academic idioms.\n"
+            "- COMPLETENESS: translate EVERY sentence of the input — never omit, skip, summarize "
+            "or truncate, even if the text repeats or looks unusual.\n"
+            "- Preserve structure: paragraph breaks, headings, lists, captions, footnote markers "
+            "and emphasis must survive in the same order.\n"
+            "- Keep numbers, units, equations, variable names, code, URLs and citation markers "
+            "(like [12]) unchanged; translate only the words around them.\n"
+            "- Use ONE consistent Persian equivalent for each key term throughout the book; when a "
+            "BOOK STRUCTURE CONTEXT is provided, follow it as the house style.\n"
+            "- Keep the JSON structure perfectly clean."
+        ),
+        "labels": {
+            "authors": "✍️ نویسنده/نویسندگان",
+            "title_or_headings": "🔖 عنوان",
+            "subtitles": "🔍 عنوان فرعی",
+            "publisher": "🏢 ناشر",
         },
     },
 }
@@ -545,10 +870,20 @@ def response_to_output(raw, direction):
         # مدلِ بدون JSON پاسخ داده — همان متن، ترجمه است
         return cleaned
 
-    raise TranslationError(
-        "خروجی مدل قابل تحلیل نبود (JSON نامعتبر و body_text هم قابل استخراج نشد).\n"
-        "پیشنهاد: در تنظیمات «تست اتصال» را بزنید یا مدل دیگری انتخاب کنید."
-    )
+    raise TranslationError(msg("parse_error"))
+
+
+def _as_text(value):
+    """مقدار فیلد مدل را امن به متن تبدیل می‌کند — مدل‌های کوچک گاهی به‌جای
+    رشته، آرایه یا عدد برمی‌گردانند و .strip() روی آن‌ها کرش می‌کرد و کل
+    اجرای کتاب را متوقف می‌کرد."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return "\n".join(t for t in (_as_text(v) for v in value) if t)
+    return str(value)
 
 
 def assemble_output(data, direction):
@@ -556,10 +891,10 @@ def assemble_output(data, direction):
     labels = d["labels"]
     out = []
     for key in ("authors", "title_or_headings", "subtitles", "publisher"):
-        value = (data.get(key) or "").strip()
+        value = _as_text(data.get(key)).strip()
         if value:
             out.append(f"{labels[key]}: {value}")
-    body = (data.get("body_text") or "").strip()
+    body = _as_text(data.get("body_text")).strip()
     if body:
         out.append("\n" + body)
     return "\n".join(out).strip()
@@ -632,10 +967,11 @@ def analyze_structure(doc, sample_pages=15):
                         )
                     )
                 )
-                if looks_heading and text not in seen_headings:
-                    # بریدن شمارهٔ صفحهٔ احتمالی از انتهای سرفصل
+                if looks_heading:
+                    # بریدن شمارهٔ صفحهٔ احتمالی از انتهای سرفصل — مقایسهٔ
+                    # تکراری‌نبودن باید روی همان متن پاک‌شده باشد، نه متن خام
                     clean = re.sub(r"\s+\d{1,3}$", "", text).strip()
-                    if len(clean) >= 3:
+                    if len(clean) >= 3 and clean not in seen_headings:
                         seen_headings.add(clean)
                         headings.append(clean)
 
@@ -800,12 +1136,12 @@ class BaseEngine:
                 system="You answer with one word.",
                 json_mode=False,
             )
-            ok_text = (out or "").strip()[:60] or "(خالی)"
-            return True, f"اتصال موفق است ✅ پاسخ سرور: {ok_text}"
+            ok_text = (out or "").strip()[:60] or ("(خالی)" if get_language() == "fa" else "(empty)")
+            return True, msg("test_ok", reply=ok_text)
         except TranslationError as exc:
-            return False, f"اتصال ناموفق ❌\n{exc}"
+            return False, msg("test_fail", detail=str(exc))
         except Exception as exc:  # noqa: BLE001
-            return False, f"اتصال ناموفق ❌\n{exc}"
+            return False, msg("test_fail", detail=str(exc))
 
 
 class GeminiEngine(BaseEngine):
@@ -847,6 +1183,15 @@ class GeminiEngine(BaseEngine):
                     delay *= 2
                     continue
                 raise TranslationError(f"خطای API جمینای ({err.code}): {err}") from err
+            except Exception as err:  # noqa: BLE001
+                # خطای انتقال (قطع اتصال، DNS، timeout لایهٔ HTTP) — مثل بقیه
+                # خطاهای موقت تلاش مجدد می‌شود، نه توقف «غیرمنتظره» کل اجرا
+                last_err = err
+                if attempt < 3:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise TranslationError(f"خطای اتصال جمینای: {err}") from err
         raise TranslationError(f"خطای API جمینای: {last_err}")
 
     def generate(self, prompt, system=None, image_png=None, json_mode=True):
@@ -877,6 +1222,8 @@ class GeminiEngine(BaseEngine):
                     "مدل به دلیل گارد کپی‌رایت (finish_reason=RECITATION) پاسخی برنگرداند. "
                     "این بخش برای بازبینی دستی علامت‌گذاری شد."
                 )
+        if not raw and "MAX_TOKENS" in (finish_reason_name(response) or ""):
+            raise TranslationError(msg("truncated_error"))
         if not raw:
             raise TranslationError("پاسخی از سرور جمینای دریافت نشد.")
         return raw
@@ -928,6 +1275,11 @@ class OpenAICompatEngine(BaseEngine):
                     continue
                 raise TranslationError(f"خطای HTTP {exc.code} از سرور:\n{body}") from exc
             except urllib.error.URLError as exc:
+                last_error = exc
+                if attempt < 3:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
                 raise TranslationError(
                     f"اتصال به سرور برقرار نشد ({self.base_url}):\n{exc.reason}"
                 ) from exc
@@ -937,8 +1289,8 @@ class OpenAICompatEngine(BaseEngine):
                     time.sleep(delay)
                     delay *= 2
                     continue
-                raise TranslationError("زمان اتصال به سرور تمام شد (timeout).") from exc
-        raise TranslationError(f"خطای سرور: {last_error}")
+                raise TranslationError(msg("server_timeout")) from exc
+        raise TranslationError(msg("server_error", detail=last_error))
 
     @staticmethod
     def _extract_content(resp):
@@ -960,7 +1312,7 @@ class OpenAICompatEngine(BaseEngine):
 
     def generate(self, prompt, system=None, image_png=None, json_mode=True):
         if not self.model:
-            raise TranslationError("نام مدل تنظیم نشده است (تنظیمات → مدل).")
+            raise TranslationError(msg("model_not_set"))
 
         if image_png:
             content = [
@@ -992,18 +1344,46 @@ class OpenAICompatEngine(BaseEngine):
             try:
                 resp = self._post(payload)
             except TranslationError as exc:
-                msg = str(exc)
-                if "response_format" in msg or "HTTP 400" in msg or "HTTP 422" in msg:
+                err_text = str(exc)
+                if "response_format" in err_text or "HTTP 400" in err_text or "HTTP 422" in err_text:
                     payload.pop("response_format", None)
                     resp = self._post(payload)
                 else:
                     raise
         else:
             resp = self._post(payload)
+        # پاسخ نصفه (پر شدن کانتکست) را همین‌جا تشخیص بده؛ وگرنه پایین‌دست
+        # به‌صورت خطای گنگ «JSON نامعتبر» دیده می‌شود و کاربر علت را نمی‌فهمد.
+        try:
+            finish = resp["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            finish = None
+        if finish in ("length", "max_tokens"):
+            raise TranslationError(msg("truncated_error"))
         text = self._extract_content(resp)
         if not text:
-            raise TranslationError("پاسخ خالی از سرور دریافت شد.")
+            raise TranslationError(msg("empty_response"))
         return text
+
+    def test(self):
+        ok, message = super().test()
+        if not ok:
+            return ok, message
+        # تست واقعی‌تر: خروجی ساخت‌یافته (JSON) — همان چیزی که ترجمهٔ کتاب
+        # لازم دارد؛ تست تک‌کلمه‌ای با کانتکست کوچک هم پاس می‌شود و کافی نیست.
+        try:
+            raw = self.generate(
+                'Return ONLY this JSON object: {"body_text": "OK"}',
+                system="You answer with JSON only.",
+                json_mode=True,
+            )
+            if not isinstance(parse_json_response(raw), dict):
+                return False, msg("test_json_fail")
+        except TranslationError as exc:
+            return False, msg("test_fail", detail=str(exc))
+        if "localhost" in self.base_url or "127.0.0.1" in self.base_url:
+            message += msg("test_local_hint")
+        return True, message
 
 
 def make_engine(cfg):
@@ -1017,7 +1397,7 @@ def make_engine(cfg):
         )
     key = (cfg.get("api_key") or "").strip()
     if not key:
-        raise TranslationError("API key گوگل تنظیم نشده است.")
+        raise TranslationError(msg("gemini_key_missing"))
     return GeminiEngine(key, cfg.get("model", "gemini-2.5-flash"),
                         cfg.get("temperature", 0.1))
 
@@ -1170,6 +1550,16 @@ def translate_page(engine, page_obj, cfg, direction, context_tail="",
 
     # صفحهٔ اسکن‌شده: یک درخواست تصویری
     if not source:
+        # صفحه‌ای که فقط هدر/شماره داشته و بعد از پاک‌سازی خالی شده اسکن‌شده
+        # نیست: درخواست تصویری نفرست (هزینه + خروجی توهمی روی صفحهٔ خالی)
+        try:
+            has_image = bool(page_obj.get_images())
+        except Exception:  # noqa: BLE001
+            has_image = True
+        if not has_image:
+            if on_progress:
+                on_progress(1, 1)
+            return "", context_tail, None
         if on_progress:
             on_progress(0, 1)
         pix = page_obj.get_pixmap(matrix=pymupdf.Matrix(2, 2))
@@ -1181,7 +1571,8 @@ def translate_page(engine, page_obj, cfg, direction, context_tail="",
             on_progress(1, 1)
         if on_partial:
             on_partial(out)
-        return out, out, None
+        # دم کانتکست مثل مسیر عادی محدود است، نه کل صفحه
+        return out, rolling_context(out, cfg), None
 
     max_chars = int(cfg.get("chunk_max_chars", CONFIG_DEFAULTS["chunk_max_chars"]))
     chunks = split_into_chunks(source, max_chars)
@@ -1191,9 +1582,20 @@ def translate_page(engine, page_obj, cfg, direction, context_tail="",
 
     results = []
     tail = context_tail
+    delay = float(cfg.get("request_delay_sec", 0) or 0)
     for index, chunk in enumerate(chunks, start=1):
         if should_continue and not should_continue():
             raise CancelledError()
+        if index > 1 and delay > 0:
+            # «تاخیر بین درخواست‌ها» بین تکه‌های یک صفحه هم اعمال می‌شود،
+            # نه فقط بین صفحه‌ها — وگرنه صفحهٔ چندتکه‌ای 429 می‌سازد
+            waited = 0.0
+            while waited < delay:
+                if should_continue and not should_continue():
+                    raise CancelledError()
+                step = min(0.2, delay - waited)
+                time.sleep(step)
+                waited += step
         prompt = build_prompt(chunk, direction, tail)
         raw = engine.generate(prompt, system=system)
         out = response_to_output(raw, direction)
@@ -1220,7 +1622,9 @@ def review_translation(engine, source, translation, direction, cfg):
     if data.get("ok") is True:
         return translation
     corrected = data.get("corrected_translation")
-    if isinstance(corrected, str) and len(corrected.strip()) >= max(40, len(translation) // 3):
+    # اصلاحیه باید دست‌کم نصف ترجمه باشد؛ آستانهٔ شل‌تر یعنی QC می‌تواند
+    # بی‌سروصدا تا دو سوم صفحه را حذف کند و صفحه «ترجمه‌شده» ثبت شود
+    if isinstance(corrected, str) and len(corrected.strip()) >= max(40, len(translation) // 2):
         return corrected.strip()
     return translation
 
@@ -1236,15 +1640,25 @@ class JobStore:
         self.source_path = os.path.abspath(source_path)
         digest = hashlib.sha1(self.source_path.encode("utf-8")).hexdigest()[:16]
         self.path = os.path.join(jobs_dir(), f"{digest}.json")
+        self._fingerprint = self._file_fingerprint()
         self._lock = threading.Lock()
         self.data = {
             "source": self.source_path,
+            "fingerprint": self._fingerprint,
             "translations": {},
             "reviewed": {},
             "structure": None,
             "context_tail": "",
             "updated": 0,
         }
+
+    def _file_fingerprint(self):
+        """اثر انگشت سبک فایل (حجم + زمان ویرایش) برای تشخیص تعویض فایل."""
+        try:
+            st = os.stat(self.source_path)
+            return f"{st.st_size}:{int(st.st_mtime)}"
+        except OSError:
+            return None
 
     def reset_translations(self):
         """حذف همهٔ ترجمه‌های ذخیره‌شده (برای «شروع از اول») — ساختار کتاب حفظ می‌شود."""
@@ -1259,6 +1673,16 @@ class JobStore:
             with open(self.path, "r", encoding="utf-8") as fh:
                 stored = json.load(fh)
             if isinstance(stored, dict) and stored.get("source") == self.source_path:
+                stored_fp = stored.get("fingerprint")
+                if stored_fp and self._fingerprint and stored_fp != self._fingerprint:
+                    # فایل روی همان مسیر عوض شده (مثلاً ویرایش جدید کتاب):
+                    # ترجمه‌های فایل قبلی نباید به این فایل بچسبند — فایل کار
+                    # قبلی به‌صورت پشتیبان نگه داشته می‌شود و کار تازه شروع می‌شود
+                    try:
+                        os.replace(self.path, self.path + ".bak")
+                    except OSError:
+                        pass
+                    return self
                 if isinstance(stored.get("translations"), dict):
                     stored["translations"] = {
                         str(k): v for k, v in stored["translations"].items()
@@ -1276,6 +1700,8 @@ class JobStore:
     def save(self):
         with self._lock:
             self.data["updated"] = int(time.time())
+            if self._fingerprint:
+                self.data["fingerprint"] = self._fingerprint
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as fh:
                 json.dump(self.data, fh, ensure_ascii=False)
@@ -1355,8 +1781,13 @@ def export_markdown(job, source_name, path):
         fh.write("\n".join(lines))
 
 
-def export_html(job, doc, source_name, out_dir):
-    """کتاب کامل HTML راست‌به‌چپ + تصاویر صفحات (قابل چاپ / ذخیره به‌صورت PDF)."""
+def export_html(job, doc, source_name, out_dir, direction="en2fa"):
+    """کتاب کامل HTML + تصاویر صفحات (قابل چاپ / ذخیره به‌صورت PDF).
+
+    جهت و زبان سند از زبان مقصد ترجمه پیروی می‌کند (مقصد انگلیسی → LTR)."""
+    d = DIRECTIONS.get(direction, DIRECTIONS["en2fa"])
+    dir_attr = "rtl" if d.get("rtl", True) else "ltr"
+    lang = direction.split("2")[-1] if "2" in direction else "fa"
     images_dir = os.path.join(out_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
 
@@ -1380,12 +1811,12 @@ def export_html(job, doc, source_name, out_dir):
         )
 
     document = f"""<!DOCTYPE html>
-<html dir="rtl" lang="fa">
+<html dir="{dir_attr}" lang="{lang}">
 <head>
 <meta charset="utf-8">
 <title>ترجمهٔ {html_mod.escape(source_name)}</title>
 <style>
-  body {{ font-family: "Vazirmatn", "Tahoma", "Segoe UI", sans-serif; direction: rtl;
+  body {{ font-family: "Vazirmatn", "Tahoma", "Segoe UI", sans-serif; direction: {dir_attr};
          line-height: 1.9; max-width: 860px; margin: 0 auto; padding: 24px;
          color: #0f172a; background: #ffffff; }}
   h1 {{ font-size: 22px; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }}

@@ -3,7 +3,8 @@
 kaman ai translator v3 — ترجمهٔ کتاب‌های PDF/EPUB با هوش مصنوعی.
 
 نسخهٔ ۳ شامل:
-  - ترجمهٔ دوطرفه (انگلیسی ⟶ فارسی / فارسی ⟶ انگلیسی)
+  - ترجمه بین سه زبان (انگلیسی، فارسی، عربی) در همهٔ جهت‌ها
+  - رابط کاربری دوزبانه (فارسی / English) با چیدمان RTL/LTR خودکار
   - تکه‌تکه‌سازی خودکار + کنترل هوشمند کانتکست بین تکه‌ها و صفحات
   - ترجمهٔ خودکار کل کتاب با صف، توقف/ادامه و Resume از صفحهٔ ناتمام
   - تحلیل ساختار کتاب و Template اختصاصی هر کتاب (محلی و رایگان)
@@ -26,7 +27,7 @@ from PyQt6.QtWidgets import (
     QRadioButton, QMenu,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QEvent, QObject
-from PyQt6.QtGui import QFont, QPixmap, QIcon, QTextCursor
+from PyQt6.QtGui import QFont, QPixmap, QIcon, QTextCursor, QGuiApplication
 import pymupdf  # PyMuPDF (نام جدید؛ بدون هشدار قدیمی fitz)
 
 import kaman_core as core
@@ -144,6 +145,318 @@ def fa_number(value):
     return str(value).translate(_FA_DIGITS)
 
 
+# ============================== زبان رابط کاربری ==============================
+
+_UI_LANG = "fa"
+
+STRINGS = {
+    "fa": {
+        "no_file": "هیچ فایلی انتخاب نشده است",
+        "settings": "⚙️ تنظیمات",
+        "settings_title": "تنظیمات",
+        "open_book": "📂 انتخاب کتاب (PDF / EPUB)",
+        "next_page": "◀ صفحه بعد",
+        "prev_page": "صفحه قبل ▶",
+        "page_label": "صفحه: {cur} / {total}",
+        "translate_page": "🚀 ترجمهٔ این صفحه",
+        "translate_book": "📚 ترجمهٔ کل کتاب",
+        "copy": "📋 کپی",
+        "copy_tip": "📋 کل متن ترجمهٔ صفحهٔ فعلی را کپی می‌کند.\nفقط وقتی این صفحه ترجمه شده باشد فعال (آبی) می‌شود؛ حالت خاکستری = غیرفعال.",
+        "save": "💾 ذخیره",
+        "save_page_act": "ترجمهٔ صفحهٔ فعلی (TXT)…",
+        "save_md_act": "کل کتاب (Markdown)…",
+        "save_html_act": "کل کتاب با تصاویر (HTML)…",
+        "src_lang": "🌐 زبان مبدأ:",
+        "tgt_lang": "زبان مقصد:",
+        "lang_en": "انگلیسی",
+        "lang_fa": "فارسی",
+        "lang_ar": "عربی",
+        "lang_hint": "اگر مبدأ و مقصد یکی شود، دیگری خودکار جابه‌جا می‌شود و انتخابتان در همهٔ کتاب‌ها می‌ماند.",
+        "view_source": "📝 نمایش متن مبدأ",
+        "view_image": "🖼 نمایش تصویر صفحه",
+        "reviewed": "✓ بازبینی شد (تأیید انسانی)",
+        "reviewed_tip": "✓ وقتی ترجمهٔ این صفحه را خودتان خواندید و تأیید کردید تیک بزنید.\nدر آمار (بازبینی‌شده) و خروجی نهایی کتاب لحاظ می‌شود.",
+        "ready": "آماده",
+        "pause": "⏸ توقف",
+        "resume_btn": "▶ ادامه",
+        "cancel_btn": "■ لغو",
+        "cancel_plain": "انصراف",
+        "page_image_title": "📖 تصویر صفحه فعلی کتاب",
+        "page_text_title": "📝 متن مبدأ صفحهٔ فعلی",
+        "image_placeholder": "تصویر صفحهٔ کتاب به محض بارگذاری اینجا رندر می‌شود.",
+        "source_placeholder": "متن استخراج‌شدهٔ مبدأ این صفحه اینجا نمایش داده می‌شود.",
+        "output_title": "📝 ترجمه",
+        "output_placeholder": "پس از شروع ترجمه، متن ترجمه‌شده در این بخش ظاهر می‌شود.",
+        "preparing": "در حال آماده‌سازی…",
+        "page_done": "ترجمهٔ این صفحه تمام شد ✅",
+        "page_failed": "ترجمه ناتمام ماند ❌",
+        "unexpected": "خطای غیرمنتظره رخ داد:\n{detail}",
+        "file_error": "خطا در باز کردن فایل:\n{detail}",
+        "extract_error": "خطا در استخراج متن:\n{detail}",
+        "render_error": "خطا در رندر تصویری صفحه:\n{detail}",
+        "no_text_page": "(این صفحه متن استخراج‌پذیری ندارد — تصویر اسکن‌شده است)",
+        "click_translate": "برای ترجمهٔ این صفحه روی «ترجمهٔ این صفحه» کلیک کنید.",
+        "stats": "ترجمه‌شده: {done} از {total} | بازبینی‌شده: {rev}",
+        "resume_hint": "🔄 {n} صفحه قبلاً ترجمه شده — برای ادامه «ترجمهٔ کل کتاب» را بزنید.",
+        "structure_ai_running": "🧩 در حال تحلیل عمیق ساختار با هوش مصنوعی…",
+        "structure_ai_done": "🧩 ساختار عمیق AI ذخیره شد ✅",
+        "structure_ai_failed": "⚠️ تحلیل عمیق AI ناموفق بود (در تنظیمات قابل قطع است)",
+        "open_title": "انتخاب کتاب",
+        "settings_applied": "⚙️ تنظیمات جدید در ادامهٔ ترجمه اعمال می‌شود",
+        "lang_changed_note": "زبان برنامه عوض شد — برای اعمال کامل، برنامه را ببندید و دوباره باز کنید.",
+        "restart_cleared": "🗑 ذخیرهٔ قبلی حذف شد — ترجمه از اول شروع می‌شود",
+        "batch_header": "📚 ترجمهٔ خودکار — صفحهٔ {a} تا {b}",
+        "qc_on": " | QC: روشن",
+        "batch_starting": "شروع ترجمهٔ خودکار…",
+        "copied": "📋 کپی شد",
+        "percent": "{n}٪",
+        "page_sep": "── صفحهٔ {p} ──",
+        "paused_status": "⏸ توقف — ترجمه متوقف شد (ذخیره‌شده)",
+        "resumed_status": "▶ ادامهٔ ترجمه…",
+        "quota_status": "⏳ سهمیه پر شد — با «ادامه» دوباره شروع کنید",
+        "quota_title": "سهمیهٔ API",
+        "batch_done_title": "ترجمهٔ کل کتاب",
+        "batch_failed_status": "❌ ترجمه ناتمام ماند",
+        "error_title": "خطا در ترجمه",
+        "resume_from_missing": "ادامهٔ ترجمه از صفحهٔ ناتمام…",
+        "cancelling": "در حال لغو…",
+        "cancelled_status": "ترجمه لغو شد",
+        "wk_chunk": "تکهٔ {i} از {n}…",
+        "wk_page": "در حال ترجمهٔ صفحه…",
+        "wk_page_chunk": "صفحهٔ {p} — تکهٔ {i} از {n}",
+        "wk_page_working": "صفحهٔ {p} — در حال ترجمه…",
+        "wk_qc": "صفحهٔ {p} — بازبینی و اصلاح کیفیت (QC)…",
+        "wk_all_done": "همهٔ صفحات این محدوده قبلاً ترجمه شده‌اند.",
+        "wk_done": "ترجمهٔ {n} صفحه با موفقیت تمام شد.",
+        "wk_remaining": "\n{n} صفحه باقی مانده است.",
+        "wk_cancelled": "ترجمه لغو شد — {n} صفحه در این اجرا ترجمه شد.",
+        "wk_quota_suffix": "\nترجمه‌های انجام‌شده ذخیره شد؛ با دکمهٔ «ادامه» از همان‌جا ادامه دهید.",
+        "save_title": "ذخیره",
+        "save_first_page": "ابتدا این صفحه را ترجمه کنید.",
+        "save_page_title": "ذخیرهٔ ترجمهٔ صفحه",
+        "saved_msg": "ذخیره شد:\n{path}",
+        "save_none": "هنوز صفحه‌ای ترجمه نشده است.",
+        "save_book_title": "ذخیرهٔ کل کتاب",
+        "html_title": "خروجی HTML",
+        "html_busy": "حین ترجمهٔ کل کتاب در دسترس نیست (همزمانی با PDF). می‌توانید Markdown را همین حالا ذخیره کنید.",
+        "export_busy": "حین ترجمه در دسترس نیست؛ بعد از پایان یا توقف ترجمه دوباره تلاش کنید.",
+        "html_dir_title": "پوشهٔ خروجی کتاب HTML",
+        "html_done": "کتاب کامل با تصاویر ساخته شد:\n{path}\n\nبرای تبدیل به PDF: فایل را در مرورگر باز کنید و Print → Save as PDF.",
+        "engine_label": "موتور ترجمه:",
+        "provider_gemini": "Google Gemini",
+        "provider_openai": "سرور سازگار با OpenAI (لوکال/ابری)",
+        "base_label": "آدرس سرور (Base URL):",
+        "api_label": "API Key:",
+        "show_key": "نمایش",
+        "model_label": "مدل:",
+        "key_ph_gemini": "کلید Google AI Studio",
+        "key_ph_local": "کلید (برای سرور لوکال معمولاً دلخواه است)",
+        "model_ph_openai": "مثلاً llama3.2 یا qwen2.5:14b",
+        "model_ph_gemini": "gemini-2.5-flash",
+        "encrypt_note": "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:",
+        "open_folder": "📂 باز کردن پوشه",
+        "open_folder_tip": "پوشهٔ ذخیرهٔ تنظیمات، کلید رمزنگاری‌شده و ترجمه‌های شما را در ویندوز باز می‌کند.",
+        "theme_label": "تم برنامه:",
+        "theme_system": "سیستم (خودکار)",
+        "theme_dark": "دارک",
+        "theme_light": "لایت",
+        "ui_lang_label": "زبان برنامه:",
+        "ui_lang_hint": "تغییر زبان، پس از بستن و باز کردن دوبارهٔ برنامه به‌طور کامل اعمال می‌شود.",
+        "local_hint": "💡 سرور لوکال: مدل پیشنهادی qwen2.5:14b یا قوی‌تر است. در Ollama پنجرهٔ کانتکست پیش‌فرض کوچک است؛ برای کتاب‌های طولانی num_ctx را بالا ببرید (مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند.",
+        "structure_section": "🧩 ساختار کتاب و تمپلیت",
+        "struct_auto": "تحلیل خودکار ساختار هنگام باز شدن فایل (محلی و رایگان)",
+        "struct_ai": "تشخیص عمیق ساختار با هوش مصنوعی (۱ درخواست API برای هر فایل)",
+        "struct_editor": "نمایش ویرایشگر تمپلیت (ویرایش دستی سرفصل‌ها و برچسب‌ها)",
+        "headings_label": "سرفصل‌ها (هر خط یک مورد):",
+        "headings_ph": "مثلاً: فصل اول: مقدمه / Chapter 1: Introduction",
+        "labels_label": "برچسب‌های تکرارشونده (هر خط یک مورد):",
+        "labels_ph": "مثلاً: بیشتر بدانید / فعالیت کنید / تمرین کنید / Key Terms",
+        "editor_hint_job": "این فهرست‌ها در پرامپت ترجمه استفاده می‌شوند تا هر سرفصل/برچسبِ تکرارشوندهٔ همین کتاب همیشه یک‌جور ترجمه شود. پس از باز کردن فایل به‌صورت خودکار پر می‌شوند (رایگان و محلی)؛ اینجا می‌توانید اصلاح یا افزایششان کنید و با «ذخیرهٔ تنظیمات» برای همین فایل ثبت کنید.",
+        "editor_hint_nojob": "این فهرست‌ها بعد از باز کردن یک فایل به‌صورت خودکار تحلیل و پر می‌شوند (رایگان و محلی). برای ویرایش دستی، ابتدا فایلی باز کنید.",
+        "testing": "در حال تست اتصال…",
+        "test_btn": "🧪 تست اتصال",
+        "save_btn": "ذخیره",
+        "batch_title": "📚 ترجمهٔ خودکار کل کتاب",
+        "range_section": "۱. محدودهٔ ترجمه",
+        "all_pages": "کل کتاب ({n} صفحه)",
+        "range_radio": "محدودهٔ خاصی از صفحات",
+        "from_page": "از صفحهٔ:",
+        "to_page": "تا صفحهٔ:",
+        "resume_text": "🔄 {n} صفحه قبلاً ترجمه و ذخیره شده است — انتخاب کنید:",
+        "keep_radio": "ادامه از اولین صفحهٔ ناتمام (ذخیرهٔ قبلی حفظ می‌شود — سریع‌تر)",
+        "restart_radio": "ترجمه از اول شروع شود (ذخیرهٔ قبلی حذف می‌شود)",
+        "options_section": "۲. گزینه‌ها",
+        "structure_chk": "تحلیل ساختار کتاب و Template اختصاصی آن (محلی و رایگان)",
+        "qc_chk": "بازبینی و اصلاح خودکار ترجمه (QC loop) — پیشنهادی؛ هزینهٔ API دو برابر",
+        "delay_label": "تاخیر بین درخواست‌ها:",
+        "delay_suffix": " ثانیه",
+        "estimate": "صفحات این اجرا: {count} | ترجمه‌نشده: {remaining}",
+        "start_btn": "▶ شروع ترجمه",
+    },
+    "en": {
+        "no_file": "No file selected",
+        "settings": "⚙️ Settings",
+        "settings_title": "Settings",
+        "open_book": "📂 Open book (PDF / EPUB)",
+        "next_page": "Next page ▶",
+        "prev_page": "◀ Previous page",
+        "page_label": "Page: {cur} / {total}",
+        "translate_page": "🚀 Translate this page",
+        "translate_book": "📚 Translate whole book",
+        "copy": "📋 Copy",
+        "copy_tip": "📋 Copies the full translation of the current page.\nIt is enabled (blue) only when this page is translated; grey = disabled.",
+        "save": "💾 Save",
+        "save_page_act": "Current page translation (TXT)…",
+        "save_md_act": "Whole book (Markdown)…",
+        "save_html_act": "Whole book with images (HTML)…",
+        "src_lang": "🌐 Source language:",
+        "tgt_lang": "Target language:",
+        "lang_en": "English",
+        "lang_fa": "Persian",
+        "lang_ar": "Arabic",
+        "lang_hint": "If source and target collide, the other one swaps automatically; your choice persists across all books.",
+        "view_source": "📝 Show source text",
+        "view_image": "🖼 Show page image",
+        "reviewed": "✓ Reviewed (human-approved)",
+        "reviewed_tip": "✓ Tick this once you have read and approved this page's translation yourself.\nIt counts in the stats (reviewed) and in the final book output.",
+        "ready": "Ready",
+        "pause": "⏸ Pause",
+        "resume_btn": "▶ Resume",
+        "cancel_btn": "■ Cancel",
+        "cancel_plain": "Cancel",
+        "page_image_title": "📖 Current page image",
+        "page_text_title": "📝 Current page source text",
+        "image_placeholder": "The page image will be rendered here once a book is loaded.",
+        "source_placeholder": "The extracted source text of this page will appear here.",
+        "output_title": "📝 Translation",
+        "output_placeholder": "The translation will appear here once translation starts.",
+        "preparing": "Preparing…",
+        "page_done": "This page is translated ✅",
+        "page_failed": "Translation stopped ❌",
+        "unexpected": "Unexpected error:\n{detail}",
+        "file_error": "Error opening the file:\n{detail}",
+        "extract_error": "Error extracting text:\n{detail}",
+        "render_error": "Error rendering the page image:\n{detail}",
+        "no_text_page": "(This page has no extractable text — it is a scanned image)",
+        "click_translate": "Click “Translate this page” to translate this page.",
+        "stats": "Translated: {done} of {total} | Reviewed: {rev}",
+        "resume_hint": "🔄 {n} pages already translated — press “Translate whole book” to continue.",
+        "structure_ai_running": "🧩 Running deep AI structure analysis…",
+        "structure_ai_done": "🧩 Deep AI structure saved ✅",
+        "structure_ai_failed": "⚠️ Deep AI structure analysis failed (can be turned off in Settings)",
+        "open_title": "Open book",
+        "settings_applied": "⚙️ New settings will apply to the rest of the translation",
+        "lang_changed_note": "App language changed — close and reopen the app to apply it fully.",
+        "restart_cleared": "🗑 Previous progress cleared — translation restarts from the beginning",
+        "batch_header": "📚 Auto translation — pages {a} to {b}",
+        "qc_on": " | QC: on",
+        "batch_starting": "Starting auto translation…",
+        "copied": "📋 Copied",
+        "percent": "{n}%",
+        "page_sep": "── Page {p} ──",
+        "paused_status": "⏸ Paused — translation stopped (saved)",
+        "resumed_status": "▶ Resuming translation…",
+        "quota_status": "⏳ Quota exhausted — press “Resume” to continue",
+        "quota_title": "API quota",
+        "batch_done_title": "Whole-book translation",
+        "batch_failed_status": "❌ Translation stopped",
+        "error_title": "Translation error",
+        "resume_from_missing": "Resuming from the unfinished page…",
+        "cancelling": "Cancelling…",
+        "cancelled_status": "Translation cancelled",
+        "wk_chunk": "Chunk {i} of {n}…",
+        "wk_page": "Translating page…",
+        "wk_page_chunk": "Page {p} — chunk {i} of {n}",
+        "wk_page_working": "Page {p} — translating…",
+        "wk_qc": "Page {p} — quality review (QC)…",
+        "wk_all_done": "All pages in this range are already translated.",
+        "wk_done": "Translated {n} pages successfully.",
+        "wk_remaining": "\n{n} pages remaining.",
+        "wk_cancelled": "Translation cancelled — {n} pages were translated in this run.",
+        "wk_quota_suffix": "\nCompleted translations were saved; press “Resume” to continue from the same place.",
+        "save_title": "Save",
+        "save_first_page": "Translate this page first.",
+        "save_page_title": "Save page translation",
+        "saved_msg": "Saved:\n{path}",
+        "save_none": "No page has been translated yet.",
+        "save_book_title": "Save whole book",
+        "html_title": "HTML export",
+        "html_busy": "Not available during whole-book translation (concurrent PDF access). You can save Markdown right now.",
+        "export_busy": "Not available while translating; try again after it finishes or is paused.",
+        "html_dir_title": "HTML book output folder",
+        "html_done": "Full book with images created:\n{path}\n\nTo make a PDF: open the file in a browser and use Print → Save as PDF.",
+        "engine_label": "Translation engine:",
+        "provider_gemini": "Google Gemini",
+        "provider_openai": "OpenAI-compatible server (local/cloud)",
+        "base_label": "Server address (Base URL):",
+        "api_label": "API Key:",
+        "show_key": "Show",
+        "model_label": "Model:",
+        "key_ph_gemini": "Google AI Studio key",
+        "key_ph_local": "Key (for local servers, usually arbitrary)",
+        "model_ph_openai": "e.g. llama3.2 or qwen2.5:14b",
+        "model_ph_gemini": "gemini-2.5-flash",
+        "encrypt_note": "🔒 The API key is stored encrypted (Windows DPAPI). Your settings and translations live only in this folder on your computer:",
+        "open_folder": "📂 Open folder",
+        "open_folder_tip": "Opens the folder holding your settings, encrypted key and translations in Windows Explorer.",
+        "theme_label": "App theme:",
+        "theme_system": "System (auto)",
+        "theme_dark": "Dark",
+        "theme_light": "Light",
+        "ui_lang_label": "App language:",
+        "ui_lang_hint": "The language is fully applied after closing and reopening the app.",
+        "local_hint": "💡 Local server: a recommended model is qwen2.5:14b or stronger. Ollama's default context window is small; for long books raise num_ctx (e.g. 16384) or replies will be cut off.",
+        "structure_section": "🧩 Book structure & template",
+        "struct_auto": "Automatic structure analysis when a file opens (local & free)",
+        "struct_ai": "Deep structure detection with AI (1 API request per file)",
+        "struct_editor": "Show template editor (manual heading/label editing)",
+        "headings_label": "Headings (one per line):",
+        "headings_ph": "e.g. Chapter 1: Introduction",
+        "labels_label": "Repeated labels (one per line):",
+        "labels_ph": "e.g. Key Terms / Did you know",
+        "editor_hint_job": "These lists are used in the translation prompt so every repeated heading/label in this book is always translated the same way. They are filled automatically after opening a file (free & local); you can edit or extend them here and press “Save settings” to store them for this file.",
+        "editor_hint_nojob": "These lists are analysed and filled automatically after you open a file (free & local). To edit them manually, open a file first.",
+        "testing": "Testing connection…",
+        "test_btn": "🧪 Test connection",
+        "save_btn": "Save",
+        "batch_title": "📚 Whole-book auto translation",
+        "range_section": "1. Translation range",
+        "all_pages": "Whole book ({n} pages)",
+        "range_radio": "A specific page range",
+        "from_page": "From page:",
+        "to_page": "To page:",
+        "resume_text": "🔄 {n} pages are already translated and saved — choose:",
+        "keep_radio": "Continue from the first unfinished page (previous progress kept — faster)",
+        "restart_radio": "Restart translation from the beginning (previous progress deleted)",
+        "options_section": "2. Options",
+        "structure_chk": "Book structure analysis & its custom Template (local & free)",
+        "qc_chk": "Automatic review & correction (QC loop) — recommended; doubles API cost",
+        "delay_label": "Delay between requests:",
+        "delay_suffix": " s",
+        "estimate": "Pages in this run: {count} | Untranslated: {remaining}",
+        "start_btn": "▶ Start translation",
+    },
+}
+
+
+def set_ui_lang(lang):
+    """زبان رابط کاربری + جهت چیدمان و زبان پیام‌های هسته را تنظیم می‌کند."""
+    global _UI_LANG
+    _UI_LANG = "en" if lang == "en" else "fa"
+    core.set_language(_UI_LANG)
+
+
+def S(key, **kwargs):
+    table = STRINGS.get(_UI_LANG, STRINGS["fa"])
+    text = table.get(key) or STRINGS["fa"][key]
+    return text.format(**kwargs) if kwargs else text
+
+
+def num(value):
+    """عدد با ارقام متناسب با زبان رابط (فارسی → ارقام فارسی)."""
+    return fa_number(value) if _UI_LANG == "fa" else str(value)
+
+
 class _SpinAlignFilter(QObject):
     """فیلتر رویداد: تراز عدد اسپینر را بعد از نمایش/تعویض استایل دوباره اعمال می‌کند."""
 
@@ -207,21 +520,22 @@ class ApiTestWorker(QThread):
 class AiStructureWorker(QThread):
     """پاس اختیاری AI برای شناسایی عمیق‌تر ساختار کتاب (۱ درخواست)."""
 
-    done = pyqtSignal(dict)
+    done = pyqtSignal(object, dict)   # job صاحب نمونه، ساختار ادغام‌شده
     failed = pyqtSignal(str)
 
-    def __init__(self, cfg, sample, local_structure=None):
+    def __init__(self, cfg, sample, local_structure=None, job=None):
         super().__init__()
         self.cfg = dict(cfg)
         self.sample = sample
         self.local = local_structure
+        self.job = job   # کتابی که این پاس برای آن است (ضد نشت بین کتاب‌ها)
 
     def run(self):
         try:
             engine = make_engine(self.cfg)
             merged = ai_structure_pass(engine, self.sample, self.local)
             if merged:
-                self.done.emit(merged)
+                self.done.emit(self.job, merged)
             else:
                 self.failed.emit("پاس AI چیزی برای افزودن برنگرداند.")
         except Exception as exc:  # noqa: BLE001
@@ -254,7 +568,7 @@ class SinglePageWorker(QThread):
 
             def on_prog(i, n):
                 self.status.emit(
-                    f"تکهٔ {i} از {n}…" if n > 1 else "در حال ترجمهٔ صفحه…"
+                    S("wk_chunk", i=i, n=n) if n > 1 else S("wk_page")
                 )
 
             text, tail, _source = translate_page(
@@ -268,7 +582,7 @@ class SinglePageWorker(QThread):
         except TranslationError as exc:
             self.failed.emit(str(exc))
         except Exception as exc:  # noqa: BLE001
-            self.failed.emit(f"خطای غیرمنتظره رخ داد:\n{exc}")
+            self.failed.emit(S("unexpected", detail=exc))
 
 
 class BatchWorker(QThread):
@@ -287,6 +601,7 @@ class BatchWorker(QThread):
         super().__init__()
         self.doc = doc
         self.cfg = dict(cfg)
+        self.cfg["request_delay_sec"] = float(delay or 0)  # تاخیر بین تکه‌ها هم اعمال شود
         self.job = job
         self.start_page = start      # 0-based شامل
         self.end_page = end          # 0-based شامل
@@ -317,6 +632,7 @@ class BatchWorker(QThread):
     def update_settings(self, cfg):
         """اعمال تنظیمات جدید حین توقف — موتور در صفحهٔ بعد بازساخته می‌شود."""
         self.cfg = dict(cfg)
+        self.cfg["request_delay_sec"] = self.delay
         self._cfg_dirty = True
 
     def cancel(self):
@@ -345,7 +661,7 @@ class BatchWorker(QThread):
             todo = self.job.missing_pages(self.start_page, self.end_page)
             total_todo = len(todo)
             if total_todo == 0:
-                self.finished_batch.emit("همهٔ صفحات این محدوده قبلاً ترجمه شده‌اند.")
+                self.finished_batch.emit(S("wk_all_done"))
                 return
 
             context = self.job.context_tail
@@ -361,10 +677,10 @@ class BatchWorker(QThread):
                 self.page_started.emit(page)
 
                 def on_prog(i, n, page=page):
-                    self.page_status.emit(f"صفحهٔ {page + 1} — تکهٔ {i} از {n}")
+                    self.page_status.emit(S("wk_page_chunk", p=page + 1, i=i, n=n))
 
                 def on_partial(_text, page=page):
-                    self.page_status.emit(f"صفحهٔ {page + 1} — در حال ترجمه…")
+                    self.page_status.emit(S("wk_page_working", p=page + 1))
 
                 text, context, source = translate_page(
                     engine, page_obj, self.cfg, self.direction,
@@ -376,9 +692,7 @@ class BatchWorker(QThread):
                 if self.qc and source:
                     if not self._continue():
                         raise CancelledError()
-                    self.page_status.emit(
-                        f"صفحهٔ {page + 1} — بازبینی و اصلاح کیفیت (QC)…"
-                    )
+                    self.page_status.emit(S("wk_qc", p=page + 1))
                     text = review_translation(
                         engine, source, text, self.direction, self.cfg
                     )
@@ -395,23 +709,19 @@ class BatchWorker(QThread):
                     self._sleep(self.delay)
 
             remaining = len(self.job.missing_pages(self.start_page, self.end_page))
-            msg = f"ترجمهٔ {done_this_run} صفحه با موفقیت تمام شد."
+            msg = S("wk_done", n=done_this_run)
             if remaining:
-                msg += f"\n{remaining} صفحه باقی مانده است."
+                msg += S("wk_remaining", n=remaining)
             self.finished_batch.emit(msg)
 
         except CancelledError:
-            self.finished_batch.emit(
-                f"ترجمه لغو شد — {done_this_run} صفحه در این اجرا ترجمه شد."
-            )
+            self.finished_batch.emit(S("wk_cancelled", n=done_this_run))
         except QuotaExhaustedError as exc:
-            self.quota_paused.emit(
-                f"{exc}\nترجمه‌های انجام‌شده ذخیره شد؛ با دکمهٔ «ادامه» از همان‌جا ادامه دهید."
-            )
+            self.quota_paused.emit(f"{exc}" + S("wk_quota_suffix"))
         except TranslationError as exc:
             self.failed.emit(str(exc))
         except Exception as exc:  # noqa: BLE001
-            self.failed.emit(f"خطای غیرمنتظره رخ داد:\n{exc}")
+            self.failed.emit(S("unexpected", detail=exc))
 
 
 # ============================== دیالوگ تنظیمات ==============================
@@ -421,21 +731,36 @@ class SettingsDialog(QDialog):
 
     def __init__(self, cfg, parent=None, job=None):
         super().__init__(parent)
-        self.setWindowTitle("⚙️ تنظیمات")
+        self.setWindowTitle(S("settings"))
         self.setMinimumWidth(560)
-        self.cfg = dict(cfg)
+        self.cfg = core.switch_provider(
+            dict(cfg), cfg.get("provider", "gemini")
+        )
         self.job = job   # فایلِ باز جاری (برای ویرایشگر تمپلیت)
         self._test_worker = None
+        self._provider = self.cfg.get("provider", "gemini")
 
-        layout = QVBoxLayout(self)
+        # پنجره نباید از صفحه بزرگ‌تر شود (گزارش کاربران: رفتن زیر تسک‌بار):
+        # ارتفاع سقف‌دار + محتوای اسکرول‌دار، با دکمه‌های ثابت در پایین.
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            avail_h = screen.availableGeometry().height()
+            self.setMaximumHeight(max(420, avail_h - 30))
+            self.resize(720, min(840, max(420, avail_h - 30)))
+
+        outer = QVBoxLayout(self)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(12)
+        self._content_layout = layout
 
         # --- موتور ترجمه ---
         row = QHBoxLayout()
-        row.addWidget(QLabel("موتور ترجمه:"))
+        row.addWidget(QLabel(S("engine_label")))
         self.combo_provider = QComboBox()
-        self.combo_provider.addItem("Google Gemini", "gemini")
-        self.combo_provider.addItem("سرور سازگار با OpenAI (لوکال/ابری)", "openai")
+        self.combo_provider.addItem(S("provider_gemini"), "gemini")
+        self.combo_provider.addItem(S("provider_openai"), "openai")
         provider = self.cfg.get("provider", "gemini")
         self.combo_provider.setCurrentIndex(0 if provider == "gemini" else 1)
         self.combo_provider.currentIndexChanged.connect(self._on_provider_changed)
@@ -444,7 +769,7 @@ class SettingsDialog(QDialog):
 
         # --- Base URL (فقط سازگار با OpenAI) ---
         self.row_base = QHBoxLayout()
-        self.lbl_base = QLabel("آدرس سرور (Base URL):")
+        self.lbl_base = QLabel(S("base_label"))
         self.txt_base = QLineEdit(self.cfg.get("base_url", ""))
         self.txt_base.setPlaceholderText("http://localhost:11434/v1")
         self.row_base.addWidget(self.lbl_base)
@@ -453,11 +778,11 @@ class SettingsDialog(QDialog):
 
         # --- API Key ---
         self.row_api = QHBoxLayout()
-        self.row_api.addWidget(QLabel("API Key:"))
+        self.row_api.addWidget(QLabel(S("api_label")))
         self.txt_api = QLineEdit(self.cfg.get("api_key", ""))
         self.txt_api.setEchoMode(QLineEdit.EchoMode.Password)
-        self.txt_api.setPlaceholderText("کلید Google AI Studio")
-        self.chk_show = QCheckBox("نمایش")
+        self.txt_api.setPlaceholderText(S("key_ph_gemini"))
+        self.chk_show = QCheckBox(S("show_key"))
         self.chk_show.toggled.connect(
             lambda on: self.txt_api.setEchoMode(
                 QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password
@@ -469,15 +794,18 @@ class SettingsDialog(QDialog):
 
         # --- مدل ---
         self.row_model = QHBoxLayout()
-        self.row_model.addWidget(QLabel("مدل:"))
+        self.row_model.addWidget(QLabel(S("model_label")))
         self.txt_model = QLineEdit(self.cfg.get("model", ""))
         self.row_model.addWidget(self.txt_model, 1)
         layout.addLayout(self.row_model)
 
-        self.lbl_encrypt = QLabel(
-            "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. "
-            "تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:"
-        )
+        # راهنمای سرور لوکال (فقط برای موتور سازگار با OpenAI دیده می‌شود)
+        self.lbl_local_hint = QLabel(S("local_hint"))
+        self.lbl_local_hint.setWordWrap(True)
+        self.lbl_local_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        layout.addWidget(self.lbl_local_hint)
+
+        self.lbl_encrypt = QLabel(S("encrypt_note"))
         self.lbl_encrypt.setStyleSheet("color: #94a3b8; font-size: 9pt;")
         layout.addWidget(self.lbl_encrypt)
 
@@ -490,21 +818,19 @@ class SettingsDialog(QDialog):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
         data_row.addWidget(self.lbl_data_dir, 1)
-        self.btn_open_data = QPushButton("📂 باز کردن پوشه")
-        self.btn_open_data.setToolTip(
-            "پوشهٔ ذخیرهٔ تنظیمات، کلید رمزنگاری‌شده و ترجمه‌های شما را در ویندوز باز می‌کند."
-        )
+        self.btn_open_data = QPushButton(S("open_folder"))
+        self.btn_open_data.setToolTip(S("open_folder_tip"))
         self.btn_open_data.clicked.connect(self.open_data_folder)
         data_row.addWidget(self.btn_open_data)
         layout.addLayout(data_row)
 
         # --- تم ---
         theme_row = QHBoxLayout()
-        theme_row.addWidget(QLabel("تم برنامه:"))
+        theme_row.addWidget(QLabel(S("theme_label")))
         self.combo_theme = QComboBox()
-        self.combo_theme.addItem("سیستم (خودکار)", "system")
-        self.combo_theme.addItem("دارک", "dark")
-        self.combo_theme.addItem("لایت", "light")
+        self.combo_theme.addItem(S("theme_system"), "system")
+        self.combo_theme.addItem(S("theme_dark"), "dark")
+        self.combo_theme.addItem(S("theme_light"), "light")
         wanted = self.cfg.get("theme", "system")
         for i in range(self.combo_theme.count()):
             if self.combo_theme.itemData(i) == wanted:
@@ -513,24 +839,36 @@ class SettingsDialog(QDialog):
         theme_row.addWidget(self.combo_theme, 1)
         layout.addLayout(theme_row)
 
-        # --- ساختار کتاب / تمپلیت (سه سوییچ جداگانه) ---
-        layout.addWidget(section_label("🧩 ساختار کتاب و تمپلیت"))
+        # --- زبان رابط کاربری ---
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel(S("ui_lang_label")))
+        self.combo_ui_lang = QComboBox()
+        self.combo_ui_lang.addItem("فارسی", "fa")
+        self.combo_ui_lang.addItem("English", "en")
+        wanted_lang = self.cfg.get("ui_lang", "fa")
+        for i in range(self.combo_ui_lang.count()):
+            if self.combo_ui_lang.itemData(i) == wanted_lang:
+                self.combo_ui_lang.setCurrentIndex(i)
+                break
+        lang_row.addWidget(self.combo_ui_lang, 1)
+        layout.addLayout(lang_row)
+        lbl_lang_hint = QLabel(S("ui_lang_hint"))
+        lbl_lang_hint.setWordWrap(True)
+        lbl_lang_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        layout.addWidget(lbl_lang_hint)
 
-        self.chk_struct_auto = QCheckBox(
-            "تحلیل خودکار ساختار هنگام باز شدن فایل (محلی و رایگان)"
-        )
+        # --- ساختار کتاب / تمپلیت (سه سوییچ جداگانه) ---
+        layout.addWidget(section_label(S("structure_section")))
+
+        self.chk_struct_auto = QCheckBox(S("struct_auto"))
         self.chk_struct_auto.setChecked(bool(self.cfg.get("structure_auto", True)))
         layout.addWidget(self.chk_struct_auto)
 
-        self.chk_struct_ai = QCheckBox(
-            "تشخیص عمیق ساختار با هوش مصنوعی (۱ درخواست API برای هر فایل)"
-        )
+        self.chk_struct_ai = QCheckBox(S("struct_ai"))
         self.chk_struct_ai.setChecked(bool(self.cfg.get("structure_ai", False)))
         layout.addWidget(self.chk_struct_ai)
 
-        self.chk_struct_editor = QCheckBox(
-            "نمایش ویرایشگر تمپلیت (ویرایش دستی سرفصل‌ها و برچسب‌ها)"
-        )
+        self.chk_struct_editor = QCheckBox(S("struct_editor"))
         self.chk_struct_editor.setChecked(bool(self.cfg.get("structure_editor", True)))
         layout.addWidget(self.chk_struct_editor)
 
@@ -538,19 +876,15 @@ class SettingsDialog(QDialog):
         ev = QVBoxLayout(self.editor_widget)
         ev.setContentsMargins(4, 8, 4, 0)
         ev.setSpacing(6)
-        ev.addWidget(QLabel("سرفصل‌ها (هر خط یک مورد):"))
+        ev.addWidget(QLabel(S("headings_label")))
         self.txt_headings = QTextEdit()
         self.txt_headings.setFixedHeight(84)
-        self.txt_headings.setPlaceholderText(
-            "مثلاً: فصل اول: مقدمه / Chapter 1: Introduction"
-        )
+        self.txt_headings.setPlaceholderText(S("headings_ph"))
         ev.addWidget(self.txt_headings)
-        ev.addWidget(QLabel("برچسب‌های تکرارشونده (هر خط یک مورد):"))
+        ev.addWidget(QLabel(S("labels_label")))
         self.txt_labels = QTextEdit()
         self.txt_labels.setFixedHeight(64)
-        self.txt_labels.setPlaceholderText(
-            "مثلاً: بیشتر بدانید / فعالیت کنید / تمرین کنید / Key Terms"
-        )
+        self.txt_labels.setPlaceholderText(S("labels_ph"))
         ev.addWidget(self.txt_labels)
         self.lbl_editor_hint = QLabel("")
         self.lbl_editor_hint.setWordWrap(True)
@@ -565,39 +899,37 @@ class SettingsDialog(QDialog):
                 "\n".join(self.job.structure.get("labels", []))
             )
         if self.job:
-            self.lbl_editor_hint.setText(
-                "این فهرست‌ها در پرامپت ترجمه استفاده می‌شوند تا هر سرفصل/برچسبِ "
-                "تکرارشوندهٔ همین کتاب همیشه یک‌جور ترجمه شود. پس از باز کردن فایل "
-                "به‌صورت خودکار پر می‌شوند (رایگان و محلی)؛ اینجا می‌توانید اصلاح یا "
-                "افزایششان کنید و با «ذخیرهٔ تنظیمات» برای همین فایل ثبت کنید."
-            )
+            self.lbl_editor_hint.setText(S("editor_hint_job"))
         else:
-            self.lbl_editor_hint.setText(
-                "این فهرست‌ها بعد از باز کردن یک فایل به‌صورت خودکار تحلیل و پر "
-                "می‌شوند (رایگان و محلی). برای ویرایش دستی، ابتدا فایلی باز کنید."
-            )
+            self.lbl_editor_hint.setText(S("editor_hint_nojob"))
             self.txt_headings.setEnabled(False)
             self.txt_labels.setEnabled(False)
         self.chk_struct_editor.toggled.connect(self.editor_widget.setVisible)
         self.editor_widget.setVisible(self.chk_struct_editor.isChecked())
         layout.addWidget(self.editor_widget)
 
+        # --- مونتاژ نهایی: محتوای اسکرول‌دار + وضعیت و دکمه‌های ثابت ---
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
+
         self.lbl_status = QLabel("")
         self.lbl_status.setWordWrap(True)
-        layout.addWidget(self.lbl_status)
+        outer.addWidget(self.lbl_status)
 
         btn_row = QHBoxLayout()
-        self.btn_test = QPushButton("🧪 تست اتصال")
+        self.btn_test = QPushButton(S("test_btn"))
         self.btn_test.clicked.connect(self.test_connection)
-        btn_save = QPushButton("ذخیره")
+        btn_save = QPushButton(S("save_btn"))
         btn_save.clicked.connect(self.save)
-        btn_cancel = QPushButton("انصراف")
+        btn_cancel = QPushButton(S("cancel_plain"))
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(self.btn_test)
         btn_row.addStretch()
         btn_row.addWidget(btn_cancel)
         btn_row.addWidget(btn_save)
-        layout.addLayout(btn_row)
+        outer.addLayout(btn_row)
 
         self._on_provider_changed()
 
@@ -608,19 +940,30 @@ class SettingsDialog(QDialog):
         os.startfile(path)
 
     def _on_provider_changed(self, *_args):
-        is_openai = self.combo_provider.currentData() == "openai"
+        new_provider = self.combo_provider.currentData()
+        if new_provider != self._provider:
+            # حافظهٔ جدا برای هر موتور: مقادیر فعلی فیلدها در پروفایل موتور
+            # قبلی ذخیره و مقادیر ذخیره‌شدهٔ موتور جدید بارگذاری می‌شود —
+            # هیچ کلید/آدرس/مدلی از یک موتور به دیگری نمی‌رسد و با برگشتن
+            # به موتور قبلی، اطلاعاتش دقیقاً همان قبلی است.
+            self.cfg["api_key"] = self.txt_api.text().strip()
+            self.cfg["base_url"] = self.txt_base.text().strip()
+            self.cfg["model"] = self.txt_model.text().strip()
+            core.switch_provider(self.cfg, new_provider)
+            self.txt_base.setText(self.cfg.get("base_url", ""))
+            self.txt_api.setText(self.cfg.get("api_key", ""))
+            self.txt_model.setText(self.cfg.get("model", ""))
+            self._provider = new_provider
+        is_openai = new_provider == "openai"
         self.lbl_base.setVisible(is_openai)
         self.txt_base.setVisible(is_openai)
+        self.lbl_local_hint.setVisible(is_openai)
         if is_openai:
-            self.txt_api.setPlaceholderText("کلید (برای سرور لوکال معمولاً دلخواه است)")
-            self.txt_model.setPlaceholderText("مثلاً llama3.2 یا qwen2.5:14b")
-            if self.txt_model.text() in ("", "gemini-2.5-flash"):
-                self.txt_model.setText("")
+            self.txt_api.setPlaceholderText(S("key_ph_local"))
+            self.txt_model.setPlaceholderText(S("model_ph_openai"))
         else:
-            self.txt_api.setPlaceholderText("کلید Google AI Studio")
-            self.txt_model.setPlaceholderText("gemini-2.5-flash")
-            if self.txt_model.text() in ("",):
-                self.txt_model.setText("gemini-2.5-flash")
+            self.txt_api.setPlaceholderText(S("key_ph_gemini"))
+            self.txt_model.setPlaceholderText(S("model_ph_gemini"))
 
     def _collect(self):
         cfg = dict(self.cfg)
@@ -629,6 +972,7 @@ class SettingsDialog(QDialog):
         cfg["api_key"] = self.txt_api.text().strip()
         cfg["model"] = self.txt_model.text().strip()
         cfg["theme"] = self.combo_theme.currentData()
+        cfg["ui_lang"] = self.combo_ui_lang.currentData()
         cfg["structure_auto"] = self.chk_struct_auto.isChecked()
         cfg["structure_ai"] = self.chk_struct_ai.isChecked()
         cfg["structure_editor"] = self.chk_struct_editor.isChecked()
@@ -641,7 +985,7 @@ class SettingsDialog(QDialog):
             self.lbl_status.setText(f"❌ {err}")
             return
         self.btn_test.setEnabled(False)
-        self.lbl_status.setText("در حال تست اتصال…")
+        self.lbl_status.setText(S("testing"))
         self._test_worker = ApiTestWorker(cfg)
         self._test_worker.done.connect(self._on_test_done)
         self._test_worker.start()
@@ -664,7 +1008,13 @@ class SettingsDialog(QDialog):
             structure["labels"] = [
                 x.strip() for x in self.txt_labels.toPlainText().splitlines() if x.strip()
             ]
-            if structure["headings"] or structure["labels"]:
+            had_template = bool(
+                (self.job.structure or {}).get("headings")
+                or (self.job.structure or {}).get("labels")
+            )
+            # خالی کردن هر دو کادر هم باید ثبت شود (حذف تمپلیت) — ولی ذخیرهٔ
+            # دست‌نخوردهٔ ویرایشگر خالی، تمپلیت خالیِ بازدارنده نمی‌سازد
+            if structure["headings"] or structure["labels"] or had_template:
                 self.job.structure = structure
                 self.job.save()
         self.saved.emit(dict(cfg))
@@ -678,8 +1028,11 @@ class BatchDialog(QDialog):
 
     def __init__(self, total_pages, job, parent=None, structure_default=True):
         super().__init__(parent)
-        self.setWindowTitle("📚 ترجمهٔ خودکار کل کتاب")
+        self.setWindowTitle(S("batch_title"))
         self.setMinimumWidth(560)
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            self.setMaximumHeight(max(380, screen.availableGeometry().height() - 30))
         self._total = total_pages
         self.job = job
 
@@ -688,16 +1041,16 @@ class BatchDialog(QDialog):
         layout.setSpacing(12)
 
         # --- بخش ۱: محدوده ---
-        layout.addWidget(section_label("۱. محدودهٔ ترجمه"))
-        self.radio_all = QRadioButton(f"کل کتاب ({total_pages} صفحه)")
+        layout.addWidget(section_label(S("range_section")))
+        self.radio_all = QRadioButton(S("all_pages", n=num(total_pages)))
         self.radio_all.setChecked(True)
-        self.radio_range = QRadioButton("محدودهٔ خاصی از صفحات")
+        self.radio_range = QRadioButton(S("range_radio"))
         layout.addWidget(self.radio_all)
         layout.addWidget(self.radio_range)
 
         range_row = QHBoxLayout()
         range_row.setSpacing(8)
-        range_row.addWidget(QLabel("از صفحهٔ:"))
+        range_row.addWidget(QLabel(S("from_page")))
         self.spin_start = QSpinBox()
         self.spin_start.setRange(1, max(1, total_pages))
         self.spin_start.setValue(1)
@@ -705,7 +1058,7 @@ class BatchDialog(QDialog):
         self.spin_start.setMinimumWidth(110)
         align_spin_value_right(self.spin_start)
         range_row.addWidget(self.spin_start)
-        range_row.addWidget(QLabel("تا صفحهٔ:"))
+        range_row.addWidget(QLabel(S("to_page")))
         self.spin_end = QSpinBox()
         self.spin_end.setRange(1, max(1, total_pages))
         self.spin_end.setValue(max(1, total_pages))
@@ -728,15 +1081,9 @@ class BatchDialog(QDialog):
         layout.addWidget(self.lbl_resume)
         completed = job.count() if job else 0
         if completed:
-            self.lbl_resume.setText(
-                f"🔄 {completed} صفحه قبلاً ترجمه و ذخیره شده است — انتخاب کنید:"
-            )
-            self.radio_keep = QRadioButton(
-                "ادامه از اولین صفحهٔ ناتمام (ذخیرهٔ قبلی حفظ می‌شود — سریع‌تر)"
-            )
-            self.radio_restart = QRadioButton(
-                "ترجمه از اول شروع شود (ذخیرهٔ قبلی حذف می‌شود)"
-            )
+            self.lbl_resume.setText(S("resume_text", n=num(completed)))
+            self.radio_keep = QRadioButton(S("keep_radio"))
+            self.radio_restart = QRadioButton(S("restart_radio"))
             self.radio_keep.setChecked(True)
             layout.addWidget(self.radio_keep)
             layout.addWidget(self.radio_restart)
@@ -745,25 +1092,21 @@ class BatchDialog(QDialog):
             self.lbl_resume.hide()
 
         # --- بخش ۲: گزینه‌ها ---
-        layout.addWidget(section_label("۲. گزینه‌ها"))
-        self.chk_structure = QCheckBox(
-            "تحلیل ساختار کتاب و Template اختصاصی آن (محلی و رایگان)"
-        )
+        layout.addWidget(section_label(S("options_section")))
+        self.chk_structure = QCheckBox(S("structure_chk"))
         self.chk_structure.setChecked(bool(structure_default))
         layout.addWidget(self.chk_structure)
 
-        self.chk_qc = QCheckBox(
-            "بازبینی و اصلاح خودکار ترجمه (QC loop) — پیشنهادی؛ هزینهٔ API دو برابر"
-        )
+        self.chk_qc = QCheckBox(S("qc_chk"))
         self.chk_qc.setChecked(True)
         layout.addWidget(self.chk_qc)
 
         delay_row = QHBoxLayout()
         delay_row.setSpacing(8)
-        delay_row.addWidget(QLabel("تاخیر بین درخواست‌ها:"))
+        delay_row.addWidget(QLabel(S("delay_label")))
         self.spin_delay = QSpinBox()
         self.spin_delay.setRange(0, 30)
-        self.spin_delay.setSuffix(" ثانیه")
+        self.spin_delay.setSuffix(S("delay_suffix"))
         self.spin_delay.setValue(int(CONFIG_DEFAULTS["request_delay_sec"]))
         self.spin_delay.setMinimumWidth(110)
         align_spin_value_right(self.spin_delay)
@@ -779,14 +1122,14 @@ class BatchDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
         btn_row.addStretch()
-        self.btn_cancel = QPushButton("انصراف")
+        self.btn_cancel = QPushButton(S("cancel_plain"))
         self.btn_cancel.setMinimumWidth(120)
         self.btn_cancel.setStyleSheet(
             "QPushButton { background-color: #475569; color: #e2e8f0; }"
             "QPushButton:hover { background-color: #64748b; }"
         )
         self.btn_cancel.clicked.connect(self.reject)
-        self.btn_start = QPushButton("▶ شروع ترجمه")
+        self.btn_start = QPushButton(S("start_btn"))
         self.btn_start.setMinimumWidth(150)
         self.btn_start.setStyleSheet(
             "QPushButton { background-color: #f59e0b; color: #451a03; font-weight: bold; }"
@@ -825,7 +1168,7 @@ class BatchDialog(QDialog):
             if self.job is not None:
                 remaining = len(self.job.missing_pages(start, end))
         self.lbl_estimate.setText(
-            f"صفحات این اجرا: {count} | ترجمه‌نشده: {remaining}"
+            S("estimate", count=num(count), remaining=num(remaining))
         )
 
     def range_0based(self):
@@ -858,14 +1201,21 @@ class ModernTranslatorApp(QMainWindow):
         self._awaiting_first_chunk = False
         self.view_doc = None      # دستگاه دوم pymupdf برای نمایش (ایمنی ریسمان حین ترجمهٔ کل کتاب)
         self._following_batch = False  # دنبال‌کردن زندهٔ صفحهٔ در حال ترجمه
+        self._src_lang = "en"          # زبان مبدأ فعلی (همگام با cfg.direction)
+        self._tgt_lang = "fa"          # زبان مقصد فعلی
 
         self.cfg = load_config()
+        set_ui_lang(self.cfg.get("ui_lang", "fa"))
 
-        # برنامه به‌طور کامل راست‌چین (مخاطب فارسی‌زبان)؛ همهٔ دیالوگ‌ها،
-        # منوها و چیدمان‌های بدون جهتِ صریح، از همین‌جا راست‌چین می‌شوند.
+        # جهت چیدمان سراسری از زبان رابط پیروی می‌کند (فارسی → راست‌چین،
+        # انگلیسی → چپ‌چین)؛ همهٔ دیالوگ‌ها، منوها و چیدمان‌های بدون جهتِ
+        # صریح از همین‌جا ارث می‌برند.
         app_inst = QApplication.instance()
         if app_inst is not None:
-            app_inst.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            app_inst.setLayoutDirection(
+                Qt.LayoutDirection.RightToLeft if _UI_LANG == "fa"
+                else Qt.LayoutDirection.LeftToRight
+            )
 
         self.init_ui()
         self.apply_theme()
@@ -873,6 +1223,18 @@ class ModernTranslatorApp(QMainWindow):
             QApplication.styleHints().colorSchemeChanged.connect(self._on_system_scheme)
         except Exception:
             pass
+
+    def closeEvent(self, event):
+        # بستن امن حین ترجمه: اول لغو را علامت می‌زنیم و کمی صبر می‌کنیم تا
+        # تردها تمیز تمام شوند؛ اگر درخواستی گیر کرده باشد بستن معطل نمی‌ماند
+        workers = (self.single_worker, self.batch_worker, self.structure_worker)
+        for worker in workers:
+            if worker is not None and worker.isRunning() and hasattr(worker, "cancel"):
+                worker.cancel()
+        for worker in workers:
+            if worker is not None and worker.isRunning():
+                worker.wait(1500)
+        event.accept()
 
     # ----------------------------- UI -----------------------------
     def init_ui(self):
@@ -893,10 +1255,10 @@ class ModernTranslatorApp(QMainWindow):
         # هدر
         header_frame = QFrame()
         header_layout = QHBoxLayout(header_frame)
-        self.lbl_file = QLabel("هیچ فایلی انتخاب نشده است")
-        self.btn_settings = QPushButton("⚙️ تنظیمات")
+        self.lbl_file = QLabel(S("no_file"))
+        self.btn_settings = QPushButton(S("settings"))
         self.btn_settings.clicked.connect(self.open_settings)
-        self.btn_open = QPushButton("📂 انتخاب کتاب (PDF / EPUB)")
+        self.btn_open = QPushButton(S("open_book"))
         self.btn_open.clicked.connect(self.open_file)
         header_layout.addWidget(self.lbl_file)
         header_layout.addStretch()
@@ -906,42 +1268,39 @@ class ModernTranslatorApp(QMainWindow):
         # ناوبری
         nav_frame = QFrame()
         nav_layout = QHBoxLayout(nav_frame)
-        self.btn_next = QPushButton("◀ صفحه بعد")
+        self.btn_next = QPushButton(S("next_page"))
         self.btn_next.setEnabled(False)
         self.btn_next.clicked.connect(self.next_page)
-        self.lbl_page = QLabel("صفحه: ۰ / ۰")
-        self.btn_prev = QPushButton("صفحه قبل ▶")
+        self.lbl_page = QLabel(S("page_label", cur=num(0), total=num(0)))
+        self.btn_prev = QPushButton(S("prev_page"))
         self.btn_prev.setEnabled(False)
         self.btn_prev.clicked.connect(self.prev_page)
 
-        self.btn_translate = QPushButton("🚀 ترجمهٔ این صفحه")
+        self.btn_translate = QPushButton(S("translate_page"))
         self.btn_translate.setEnabled(False)
         self.btn_translate.clicked.connect(self.translate_current_page)
 
-        self.btn_batch = QPushButton("📚 ترجمهٔ کل کتاب")
+        self.btn_batch = QPushButton(S("translate_book"))
         self.btn_batch.setEnabled(False)
         self.btn_batch.clicked.connect(self.start_batch)
 
-        self.btn_copy = QPushButton("📋 کپی")
+        self.btn_copy = QPushButton(S("copy"))
         self.btn_copy.setObjectName("btnCopy")  # رنگ فعال/غیرفعال از stylesheet (بدون خاکستری دائمی)
-        self.btn_copy.setToolTip(
-            "📋 کل متن ترجمهٔ صفحهٔ فعلی را کپی می‌کند.\n"
-            "فقط وقتی این صفحه ترجمه شده باشد فعال (آبی) می‌شود؛ حالت خاکستری = غیرفعال."
-        )
+        self.btn_copy.setToolTip(S("copy_tip"))
         self.btn_copy.setEnabled(False)
         self.btn_copy.clicked.connect(self.copy_translation)
 
-        self.btn_save = QPushButton("💾 ذخیره")
+        self.btn_save = QPushButton(S("save"))
         self.btn_save.setEnabled(False)
         save_menu = QMenu(self)
         self.act_save_page = save_menu.addAction(
-            "ترجمهٔ صفحهٔ فعلی (TXT)…", self.save_current_page
+            S("save_page_act"), self.save_current_page
         )
         self.act_save_md = save_menu.addAction(
-            "کل کتاب (Markdown)…", self.save_book_markdown
+            S("save_md_act"), self.save_book_markdown
         )
         self.act_save_html = save_menu.addAction(
-            "کل کتاب با تصاویر (HTML)…", self.save_book_html
+            S("save_html_act"), self.save_book_html
         )
         self.btn_save.setMenu(save_menu)
 
@@ -958,27 +1317,28 @@ class ModernTranslatorApp(QMainWindow):
         lang_frame = QFrame()
         lang_layout = QHBoxLayout(lang_frame)
 
-        self.lbl_src_lang = QLabel("🌐 زبان مبدأ:")
+        self.lbl_src_lang = QLabel(S("src_lang"))
         self.combo_src = QComboBox()
-        self.combo_src.addItem("انگلیسی", "en")
-        self.combo_src.addItem("فارسی", "fa")
+        self.combo_src.addItem(S("lang_en"), "en")
+        self.combo_src.addItem(S("lang_fa"), "fa")
+        self.combo_src.addItem(S("lang_ar"), "ar")
 
-        self.lbl_tgt_lang = QLabel("زبان مقصد:")
+        self.lbl_tgt_lang = QLabel(S("tgt_lang"))
         self.combo_tgt = QComboBox()
-        self.combo_tgt.addItem("فارسی", "fa")
-        self.combo_tgt.addItem("انگلیسی", "en")
+        self.combo_tgt.addItem(S("lang_en"), "en")
+        self.combo_tgt.addItem(S("lang_fa"), "fa")
+        self.combo_tgt.addItem(S("lang_ar"), "ar")
 
         direction = self.cfg.get("direction", "en2fa")
-        src_lang = "en" if direction == "en2fa" else "fa"
-        tgt_lang = "fa" if src_lang == "en" else "en"
-        self.combo_src.setCurrentIndex(0 if src_lang == "en" else 1)
-        self.combo_tgt.setCurrentIndex(0 if tgt_lang == "fa" else 1)
+        parts = direction.split("2")
+        if len(parts) == 2 and parts[0] in ("en", "fa", "ar") and parts[1] in ("en", "fa", "ar"):
+            self._src_lang, self._tgt_lang = parts
+        self._sync_combo(self.combo_src, self._src_lang)
+        self._sync_combo(self.combo_tgt, self._tgt_lang)
         self.combo_src.currentIndexChanged.connect(self.on_src_changed)
         self.combo_tgt.currentIndexChanged.connect(self.on_tgt_changed)
 
-        lbl_lang_hint = QLabel(
-            "تعویض هر کدام، دیگری را خودکار تنظیم می‌کند و در همهٔ کتاب‌ها می‌ماند."
-        )
+        lbl_lang_hint = QLabel(S("lang_hint"))
         lbl_lang_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
 
         lang_layout.addWidget(self.lbl_src_lang)
@@ -993,14 +1353,11 @@ class ModernTranslatorApp(QMainWindow):
         # ردیف بازبینی
         review_frame = QFrame()
         review_layout = QHBoxLayout(review_frame)
-        self.btn_view_source = QPushButton("📝 نمایش متن مبدأ")
+        self.btn_view_source = QPushButton(S("view_source"))
         self.btn_view_source.setEnabled(False)
         self.btn_view_source.clicked.connect(self.toggle_view)
-        self.chk_reviewed = QCheckBox("✓ بازبینی شد (تأیید انسانی)")
-        self.chk_reviewed.setToolTip(
-            "✓ وقتی ترجمهٔ این صفحه را خودتان خواندید و تأیید کردید تیک بزنید.\n"
-            "در آمار (بازبینی‌شده) و خروجی نهایی کتاب لحاظ می‌شود."
-        )
+        self.chk_reviewed = QCheckBox(S("reviewed"))
+        self.chk_reviewed.setToolTip(S("reviewed_tip"))
         self.chk_reviewed.setEnabled(False)
         self.chk_reviewed.toggled.connect(self.on_reviewed_toggled)
         self.lbl_stats = QLabel("")
@@ -1012,12 +1369,12 @@ class ModernTranslatorApp(QMainWindow):
         # نوار وضعیت / کنترل ترجمه (مشترک تک‌صفحه و کل کتاب)
         status_frame = QFrame()
         status_layout = QHBoxLayout(status_frame)
-        self.lbl_status = QLabel("آماده")
+        self.lbl_status = QLabel(S("ready"))
         self.lbl_status.setStyleSheet("color: #38bdf8; font-weight: bold;")
-        self.btn_pause = QPushButton("⏸ توقف")
+        self.btn_pause = QPushButton(S("pause"))
         self.btn_pause.setEnabled(False)
         self.btn_pause.clicked.connect(self.on_pause_clicked)
-        self.btn_cancel_batch = QPushButton("■ لغو")
+        self.btn_cancel_batch = QPushButton(S("cancel_btn"))
         self.btn_cancel_batch.setEnabled(False)
         self.btn_cancel_batch.clicked.connect(self.on_cancel_batch)
         status_layout.addWidget(self.btn_pause)
@@ -1033,7 +1390,7 @@ class ModernTranslatorApp(QMainWindow):
         self.progress_bar.setTextVisible(False)  # متن داخلی Qt سمت چپ رسم می‌شد؛ حذف شد
         self.progress_bar.setVisible(False)
         # درصد، جداگانه و در سمت راست نوار (شروع سطر RTL)
-        self.lbl_percent = QLabel("۰٪")
+        self.lbl_percent = QLabel(S("percent", n=num(0)))
         self.lbl_percent.setStyleSheet("color: #10b981; font-weight: bold; font-size: 11pt;")
         self.lbl_percent.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -1047,33 +1404,33 @@ class ModernTranslatorApp(QMainWindow):
         workspace_layout.setSpacing(12)
 
         page_column = QVBoxLayout()
-        self.lbl_page_title = QLabel("📖 تصویر صفحه فعلی کتاب")
+        self.lbl_page_title = QLabel(S("page_image_title"))
         self.lbl_page_title.setStyleSheet("font-weight: bold; color: #3b82f6;")
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.lbl_image_viewer = QLabel()
         self.lbl_image_viewer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_image_viewer.setText("تصویر صفحهٔ کتاب به محض بارگذاری اینجا رندر می‌شود.")
+        self.lbl_image_viewer.setText(S("image_placeholder"))
         self.scroll_area.setWidget(self.lbl_image_viewer)
 
         self.txt_source = QTextEdit()
         self.txt_source.setReadOnly(True)
         self.txt_source.setFont(QFont("Tahoma", 11))
         self.txt_source.setVisible(False)
-        self.txt_source.setPlaceholderText("متن استخراج‌شدهٔ مبدأ این صفحه اینجا نمایش داده می‌شود.")
+        self.txt_source.setPlaceholderText(S("source_placeholder"))
 
         page_column.addWidget(self.lbl_page_title)
         page_column.addWidget(self.scroll_area)
         page_column.addWidget(self.txt_source)
 
         translation_column = QVBoxLayout()
-        self.lbl_output_title = QLabel("📝 ترجمه")
+        self.lbl_output_title = QLabel(S("output_title"))
         self.lbl_output_title.setStyleSheet("font-weight: bold; color: #10b981;")
         self.txt_output = QTextEdit()
         self.txt_output.setReadOnly(True)
         self.txt_output.setFont(QFont("Tahoma", 12))
-        self.txt_output.setText("پس از شروع ترجمه، متن ترجمه‌شده در این بخش ظاهر می‌شود.")
+        self.txt_output.setText(S("output_placeholder"))
         translation_column.addWidget(self.lbl_output_title)
         translation_column.addWidget(self.txt_output)
 
@@ -1160,36 +1517,54 @@ class ModernTranslatorApp(QMainWindow):
         self.cfg = new_cfg
         self.apply_theme()
         self.apply_output_direction()
+        if new_cfg.get("ui_lang", "fa") != _UI_LANG:
+            # زبان پیام‌های هسته و دیالوگ‌های بعدی فوراً عوض می‌شود؛
+            # متن‌های پنجرهٔ اصلی با باز شدن دوبارهٔ برنامه کامل می‌شوند.
+            set_ui_lang(new_cfg.get("ui_lang", "fa"))
+            self.lbl_status.setText(S("lang_changed_note"))
         # اگر ویرایشگر تمپلیت تغییر کرده باشد، ساختار همگام می‌شود
         if self.job is not None:
             self.structure = self.job.structure
         # اعمال فوری به ترجمهٔ کل کتابِ متوقفشده (موتور در صفحهٔ بعد بازساخته می‌شود)
         if self.batch_worker is not None:
             self.batch_worker.update_settings(self.cfg)
-            self.lbl_status.setText("⚙️ تنظیمات جدید در ادامهٔ ترجمه اعمال می‌شود")
+            self.lbl_status.setText(S("settings_applied"))
 
     # ----------------------------- جهت ترجمه (مبدأ/مقصد) -----------------------------
     def on_src_changed(self, _index):
         src = self.combo_src.currentData()
-        tgt = "fa" if src == "en" else "en"
-        self._sync_combo(self.combo_tgt, tgt)
-        self._apply_direction("en2fa" if src == "en" else "fa2en")
+        if src == self._tgt_lang:
+            # قفل دوگانه: مقصد با مبدأ یکی نمی‌شود — مقصد به مبدأ قبلی جابه‌جا می‌شود
+            self._sync_combo(self.combo_tgt, self._src_lang)
+            self._tgt_lang = self._src_lang
+        self._src_lang = src
+        self._apply_direction(f"{self._src_lang}2{self._tgt_lang}")
 
     def on_tgt_changed(self, _index):
         tgt = self.combo_tgt.currentData()
-        src = "en" if tgt == "fa" else "fa"
-        self._sync_combo(self.combo_src, src)
-        self._apply_direction("en2fa" if src == "en" else "fa2en")
+        if tgt == self._src_lang:
+            # قفل دوگانه: مبدأ با مقصد یکی نمی‌شود — مبدأ به مقصد قبلی جابه‌جا می‌شود
+            self._sync_combo(self.combo_src, self._tgt_lang)
+            self._src_lang = self._tgt_lang
+        self._tgt_lang = tgt
+        self._apply_direction(f"{self._src_lang}2{self._tgt_lang}")
 
     @staticmethod
     def _sync_combo(combo, lang):
         """تنظیم کومبو بدون شلیک سیگنال (جلوگیری از حلقه و پرش چیدمان)."""
-        if combo.currentData() != lang:
-            combo.blockSignals(True)
-            combo.setCurrentIndex(0 if combo.itemData(0) == lang else 1)
-            combo.blockSignals(False)
+        if combo.currentData() == lang:
+            return
+        combo.blockSignals(True)
+        for i in range(combo.count()):
+            if combo.itemData(i) == lang:
+                combo.setCurrentIndex(i)
+                break
+        combo.blockSignals(False)
 
     def _apply_direction(self, direction):
+        parts = direction.split("2")
+        if len(parts) == 2:
+            self._src_lang, self._tgt_lang = parts
         if self.cfg.get("direction") != direction:
             self.cfg["direction"] = direction
             save_config(self.cfg)
@@ -1201,11 +1576,12 @@ class ModernTranslatorApp(QMainWindow):
         self.txt_output.setLayoutDirection(
             Qt.LayoutDirection.RightToLeft if d["rtl"] else Qt.LayoutDirection.LeftToRight
         )
-        # پنل متن مبدأ: جهت از زبانِ مبدأ پیروی می‌کند
+        # پنل متن مبدأ: جهت از زبانِ مبدأ پیروی می‌کند (فارسی/عربی → راست‌چین)
         self.txt_source.setLayoutDirection(
-            Qt.LayoutDirection.LeftToRight if d["rtl"] else Qt.LayoutDirection.RightToLeft
+            Qt.LayoutDirection.RightToLeft if d.get("source_rtl")
+            else Qt.LayoutDirection.LeftToRight
         )
-        # عنوان پنل عمداً ثابت فارسی می‌ماند تا با تعویض زبان چیدمان نپرد
+        # عنوان پنل‌ها ثابت می‌ماند تا با تعویض جهت، چیدمان نپرد
 
     # ----------------------------- فایل و صفحات -----------------------------
     def set_file_label(self, file_path):
@@ -1214,16 +1590,31 @@ class ModernTranslatorApp(QMainWindow):
 
     def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "انتخاب کتاب", "", "Books (*.pdf *.epub)"
+            self, S("open_title"), "", "Books (*.pdf *.epub)"
         )
         if not file_path:
             return
+        old_doc, old_view = self.doc, self.view_doc
         try:
             self.doc = pymupdf.open(file_path)
             self.view_doc = pymupdf.open(file_path)
         except Exception as exc:  # noqa: BLE001
-            self.txt_output.setText(f"خطا در باز کردن فایل:\n{exc}")
+            # بازگرداندن وضعیت قبلی تا سند و job از هم جدا نیفتند
+            if self.doc is not old_doc:
+                try:
+                    self.doc.close()
+                except Exception:  # noqa: BLE001
+                    pass
+            self.doc, self.view_doc = old_doc, old_view
+            self.txt_output.setText(S("file_error", detail=exc))
             return
+        # بستن اسناد قبلی (نشت هندل/حافظه در باز کردن‌های پشت‌سرهم)
+        for old in (old_doc, old_view):
+            if old is not None:
+                try:
+                    old.close()
+                except Exception:  # noqa: BLE001
+                    pass
 
         self.current_file = file_path
         self.total_pages = len(self.doc)
@@ -1239,11 +1630,9 @@ class ModernTranslatorApp(QMainWindow):
 
         done = self.job.count()
         if done:
-            self.lbl_status.setText(
-                f"🔄 {done} صفحه قبلاً ترجمه شده — برای ادامه «ترجمهٔ کل کتاب» را بزنید."
-            )
+            self.lbl_status.setText(S("resume_hint", n=num(done)))
         else:
-            self.lbl_status.setText("آماده")
+            self.lbl_status.setText(S("ready"))
 
         # (الف) تحلیل محلی ساختار + (ب) پاس عمیق AI — در صورت فعال بودن در تنظیمات
         self.auto_analyze_structure()
@@ -1282,23 +1671,29 @@ class ModernTranslatorApp(QMainWindow):
         sample = "\n".join(parts)
         if not sample.strip():
             return
-        self.lbl_status.setText("🧩 در حال تحلیل عمیق ساختار با هوش مصنوعی…")
+        self.lbl_status.setText(S("structure_ai_running"))
         self.structure_worker = AiStructureWorker(
-            self.cfg, sample, self.job.structure
+            self.cfg, sample, self.job.structure, job=self.job
         )
         self.structure_worker.done.connect(self.on_structure_ai_done)
         self.structure_worker.failed.connect(self.on_structure_ai_failed)
         self.structure_worker.finished.connect(self._cleanup_structure_worker)
         self.structure_worker.start()
 
-    def on_structure_ai_done(self, merged):
-        self.job.structure = merged
-        self.job.save()
-        self.structure = merged
-        self.lbl_status.setText("🧩 ساختار عمیق AI ذخیره شد ✅")
+    def on_structure_ai_done(self, job, merged):
+        # نتیجه در job همان کتابی ذخیره می‌شود که نمونه از آن بود — حتی اگر
+        # کاربر وسط پاس، کتاب دیگری باز کرده باشد (ضد نشت تمپلیت بین کتاب‌ها)
+        target = job if job is not None else self.job
+        if target is None:
+            return
+        target.structure = merged
+        target.save()
+        if target is self.job:
+            self.structure = merged
+            self.lbl_status.setText(S("structure_ai_done"))
 
     def on_structure_ai_failed(self, _message):
-        self.lbl_status.setText("⚠️ تحلیل عمیق AI ناموفق بود (در تنظیمات قابل قطع است)")
+        self.lbl_status.setText(S("structure_ai_failed"))
 
     def _cleanup_structure_worker(self):
         w = self.sender()
@@ -1309,7 +1704,7 @@ class ModernTranslatorApp(QMainWindow):
 
     def update_ui_controls(self):
         if self.doc:
-            self.lbl_page.setText(f"صفحه: {self.current_page + 1} / {self.total_pages}")
+            self.lbl_page.setText(S("page_label", cur=num(self.current_page + 1), total=num(self.total_pages)))
             self.btn_prev.setEnabled(self.current_page > 0)
             self.btn_next.setEnabled(self.current_page < self.total_pages - 1)
             self.btn_translate.setEnabled(True)
@@ -1322,8 +1717,8 @@ class ModernTranslatorApp(QMainWindow):
             self.lbl_stats.setText("")
             return
         self.lbl_stats.setText(
-            f"ترجمه‌شده: {self.job.count()} از {self.total_pages} "
-            f"| بازبینی‌شده: {self.job.reviewed_count()}"
+            S("stats", done=num(self.job.count()), total=num(self.total_pages),
+              rev=num(self.job.reviewed_count()))
         )
 
     def refresh_current_page(self, keep_output=False):
@@ -1333,15 +1728,15 @@ class ModernTranslatorApp(QMainWindow):
         if not self.doc:
             return
         view = self.view_doc or self.doc  # حین ترجمهٔ کل کتاب از دستگاه جدا خوانده می‌شود
-        self.lbl_page.setText(f"صفحه: {self.current_page + 1} / {self.total_pages}")
+        self.lbl_page.setText(S("page_label", cur=num(self.current_page + 1), total=num(self.total_pages)))
 
         # پنل صفحهٔ مبدأ (راست)
         if self.view_source:
             try:
                 text = extract_page_text(view.load_page(self.current_page))
-                self.txt_source.setPlainText(text.strip() or "(این صفحه متن استخراج‌پذیری ندارد — تصویر اسکن‌شده است)")
+                self.txt_source.setPlainText(text.strip() or S("no_text_page"))
             except Exception as exc:  # noqa: BLE001
-                self.txt_source.setPlainText(f"خطا در استخراج متن:\n{exc}")
+                self.txt_source.setPlainText(S("extract_error", detail=exc))
         else:
             self.render_page_image()
 
@@ -1357,9 +1752,7 @@ class ModernTranslatorApp(QMainWindow):
             self.chk_reviewed.blockSignals(False)
         else:
             if not keep_output:
-                self.txt_output.setText(
-                    "برای ترجمهٔ این صفحه روی «ترجمهٔ این صفحه» کلیک کنید."
-                )
+                self.txt_output.setText(S("click_translate"))
             self.btn_copy.setEnabled(False)
             self.chk_reviewed.blockSignals(True)
             self.chk_reviewed.setChecked(False)
@@ -1378,7 +1771,7 @@ class ModernTranslatorApp(QMainWindow):
             pixmap.loadFromData(pix.tobytes("png"))
             self.lbl_image_viewer.setPixmap(pixmap)
         except Exception as exc:  # noqa: BLE001
-            self.lbl_image_viewer.setText(f"خطا در رندر تصویری صفحه:\n{exc}")
+            self.lbl_image_viewer.setText(S("render_error", detail=exc))
 
     def _sync_nav_buttons(self):
         """همگام‌سازی فقط دکمه‌های ناوبری (بدون بیدارکردن دکمه‌های قفل‌شدهٔ حالت اشغال)."""
@@ -1411,12 +1804,12 @@ class ModernTranslatorApp(QMainWindow):
         self.scroll_area.setVisible(not self.view_source)
         self.txt_source.setVisible(self.view_source)
         self.lbl_page_title.setText(
-            "📝 متن مبدأ صفحهٔ فعلی" if self.view_source
-            else "📖 تصویر صفحهٔ فعلی کتاب"
+            S("page_text_title") if self.view_source
+            else S("page_image_title")
         )
         self.btn_view_source.setText(
-            "🖼 نمایش تصویر صفحه" if self.view_source
-            else "📝 نمایش متن مبدأ"
+            S("view_image") if self.view_source
+            else S("view_source")
         )
         self.refresh_current_page()
 
@@ -1432,6 +1825,7 @@ class ModernTranslatorApp(QMainWindow):
     def set_busy(self, busy, lock_navigation=True):
         widgets = [
             self.btn_translate, self.btn_batch, self.btn_open, self.btn_settings,
+            self.btn_save,
             self.combo_src, self.combo_tgt, self.chk_reviewed, self.btn_view_source,
         ]
         if lock_navigation:
@@ -1467,12 +1861,12 @@ class ModernTranslatorApp(QMainWindow):
             return
         err = validate_config(self.cfg)
         if err:
-            QMessageBox.warning(self, "تنظیمات", err)
+            QMessageBox.warning(self, S("settings_title"), err)
             self.open_settings()
             return
 
         self.set_busy(True)
-        self._show_status("در حال آماده‌سازی…")
+        self._show_status(S("preparing"))
         self.btn_pause.setVisible(False)
         self.btn_cancel_batch.setVisible(False)
         self._set_progress_visible(True)
@@ -1506,7 +1900,7 @@ class ModernTranslatorApp(QMainWindow):
             self.progress_bar.setRange(0, total)
             self.progress_bar.setValue(done)
             pct = int(round(done * 100.0 / total))
-            self.lbl_percent.setText(f"{fa_number(pct)}٪")
+            self.lbl_percent.setText(S("percent", n=num(pct)))
         else:
             self.progress_bar.setRange(0, 0)
             self.lbl_percent.setText("…")
@@ -1516,7 +1910,7 @@ class ModernTranslatorApp(QMainWindow):
         self.progress_bar.setVisible(visible)
         self.lbl_percent.setVisible(visible)
         if not visible:
-            self.lbl_percent.setText("۰٪")
+            self.lbl_percent.setText(S("percent", n=num(0)))
 
     def on_single_partial(self, text):
         if self._awaiting_first_chunk:
@@ -1529,14 +1923,14 @@ class ModernTranslatorApp(QMainWindow):
             self.job.set(self.current_page, text)
             self.job.context_tail = tail
             self.job.save()
-        self._end_status("ترجمهٔ این صفحه تمام شد ✅")
+        self._end_status(S("page_done"))
         self.set_busy(False)
         self.update_ui_controls()
         self.update_stats()
         self.refresh_current_page()
 
     def on_single_failed(self, message):
-        self._end_status("ترجمه ناتمام ماند ❌")
+        self._end_status(S("page_failed"))
         self.set_busy(False)
         self.update_ui_controls()
         self.txt_output.setText(message)
@@ -1553,7 +1947,7 @@ class ModernTranslatorApp(QMainWindow):
             return
         err = validate_config(self.cfg)
         if err:
-            QMessageBox.warning(self, "تنظیمات", err)
+            QMessageBox.warning(self, S("settings_title"), err)
             self.open_settings()
             return
 
@@ -1566,7 +1960,7 @@ class ModernTranslatorApp(QMainWindow):
         if dlg.wants_restart():
             self.job.reset_translations()
             self.update_stats()
-            self.lbl_status.setText("🗑 ذخیرهٔ قبلی حذف شد — ترجمه از اول شروع می‌شود")
+            self.lbl_status.setText(S("restart_cleared"))
 
         start, end = dlg.range_0based()
         use_structure = dlg.chk_structure.isChecked()
@@ -1595,14 +1989,14 @@ class ModernTranslatorApp(QMainWindow):
         }
 
         self.txt_output.clear()
-        header = f"📚 ترجمهٔ خودکار — صفحهٔ {start + 1} تا {end + 1}"
+        header = S("batch_header", a=num(start + 1), b=num(end + 1))
         if qc:
-            header += " | QC: روشن"
+            header += S("qc_on")
         self.txt_output.append(header)
         self.txt_output.append("")
 
         self.launch_batch_worker()
-        self.lbl_status.setText("شروع ترجمهٔ خودکار…")
+        self.lbl_status.setText(S("batch_starting"))
 
     def launch_batch_worker(self):
         p = self.batch_params
@@ -1628,7 +2022,7 @@ class ModernTranslatorApp(QMainWindow):
         self.lbl_percent.setText("…")
         self._status_frame.setVisible(True)
         self._set_batch_controls(True)
-        self.btn_pause.setText("⏸ توقف")
+        self.btn_pause.setText(S("pause"))
         self._following_batch = True  # نمایش زندهٔ صفحهٔ در حال ترجمه
         self.batch_worker.start()
 
@@ -1651,40 +2045,40 @@ class ModernTranslatorApp(QMainWindow):
         self.refresh_current_page(keep_output=True)
 
     def on_batch_page_done(self, page, text):
-        self.txt_output.append(f"── صفحهٔ {page + 1} ──")
+        self.txt_output.append(S("page_sep", p=num(page + 1)))
         self.txt_output.append(text)
         self.txt_output.append("")
-        self.lbl_page.setText(f"صفحه: {page + 1} / {self.total_pages}")
+        self.lbl_page.setText(S("page_label", cur=num(page + 1), total=num(self.total_pages)))
         self.update_stats()
         cursor = self.txt_output.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         self.txt_output.setTextCursor(cursor)
 
     def on_batch_paused(self):
-        self.btn_pause.setText("▶ ادامه")
+        self.btn_pause.setText(S("resume_btn"))
         self.btn_settings.setEnabled(True)  # حین توقف می‌توان تنظیمات را ویرایش کرد
-        self.lbl_status.setText("⏸ توقف — ترجمه متوقف شد (ذخیره‌شده)")
+        self.lbl_status.setText(S("paused_status"))
 
     def on_batch_resumed(self):
-        self.btn_pause.setText("⏸ توقف")
+        self.btn_pause.setText(S("pause"))
         self.btn_settings.setEnabled(False)
-        self.lbl_status.setText("▶ ادامهٔ ترجمه…")
+        self.lbl_status.setText(S("resumed_status"))
 
     def on_batch_quota(self, message):
-        self.lbl_status.setText("⏳ سهمیه پر شد — با «ادامه» دوباره شروع کنید")
-        self.btn_pause.setText("▶ ادامه")
+        self.lbl_status.setText(S("quota_status"))
+        self.btn_pause.setText(S("resume_btn"))
         self.btn_settings.setEnabled(True)  # تا تنظیمات را اصلاح کنید
-        QMessageBox.warning(self, "سهمیهٔ API", message)
+        QMessageBox.warning(self, S("quota_title"), message)
 
     def on_batch_finished(self, message):
         self._idle_after_batch()
         self.lbl_status.setText(message)
-        QMessageBox.information(self, "ترجمهٔ کل کتاب", message)
+        QMessageBox.information(self, S("batch_done_title"), message)
 
     def on_batch_failed(self, message):
         self._idle_after_batch()
-        self.lbl_status.setText("❌ ترجمه ناتمام ماند")
-        QMessageBox.critical(self, "خطا در ترجمه", message)
+        self.lbl_status.setText(S("batch_failed_status"))
+        QMessageBox.critical(self, S("error_title"), message)
 
     def _idle_after_batch(self):
         self.batch_params = None
@@ -1707,29 +2101,37 @@ class ModernTranslatorApp(QMainWindow):
             return
         # ترد قبلاً تمام شده (مثلاً سهمیه) — اجرای جدید با همان پارامترها
         if self.batch_params:
-            self.lbl_status.setText("ادامهٔ ترجمه از صفحهٔ ناتمام…")
+            self.lbl_status.setText(S("resume_from_missing"))
             self.launch_batch_worker()
 
     def on_cancel_batch(self):
         w = self.batch_worker
         if w is not None and w.isRunning():
-            self.lbl_status.setText("در حال لغو…")
+            self.lbl_status.setText(S("cancelling"))
             w.cancel()
         else:
             self._idle_after_batch()
-            self.lbl_status.setText("ترجمه لغو شد")
+            self.lbl_status.setText(S("cancelled_status"))
 
     # ----------------------------- ذخیره و خروجی -----------------------------
+    def _translation_active(self):
+        """آیا ترجمه‌ای در حال اجراست؟ (خروجی گرفتن هم‌زمان با تردها امن نیست:
+        job در حال تغییر است و سند pymupdf هم thread-safe نیست.)"""
+        if self.single_worker is not None and self.single_worker.isRunning():
+            return True
+        w = self.batch_worker
+        return w is not None and w.isRunning() and not w.is_paused()
+
     def _source_name(self):
         return os.path.basename(self.current_file or "book")
 
     def save_current_page(self):
         if not self.job or not self.job.get(self.current_page):
-            QMessageBox.information(self, "ذخیره", "ابتدا این صفحه را ترجمه کنید.")
+            QMessageBox.information(self, S("save_title"), S("save_first_page"))
             return
         stem = os.path.splitext(self._source_name())[0]
         path, _ = QFileDialog.getSaveFileName(
-            self, "ذخیرهٔ ترجمهٔ صفحه",
+            self, S("save_page_title"),
             f"{stem}_page{self.current_page + 1}.txt", "Text (*.txt)",
         )
         if not path:
@@ -1738,55 +2140,53 @@ class ModernTranslatorApp(QMainWindow):
             self.job.get(self.current_page), self._source_name(),
             self.current_page, path,
         )
-        QMessageBox.information(self, "ذخیره", f"ذخیره شد:\n{path}")
+        QMessageBox.information(self, S("save_title"), S("saved_msg", path=path))
 
     def save_book_markdown(self):
         if not self.job or self.job.count() == 0:
-            QMessageBox.information(self, "ذخیره", "هنوز صفحه‌ای ترجمه نشده است.")
+            QMessageBox.information(self, S("save_title"), S("save_none"))
+            return
+        if self._translation_active():
+            QMessageBox.information(self, S("save_title"), S("export_busy"))
             return
         stem = os.path.splitext(self._source_name())[0]
         path, _ = QFileDialog.getSaveFileName(
-            self, "ذخیرهٔ کل کتاب", f"{stem}_translated.md",
+            self, S("save_book_title"), f"{stem}_translated.md",
             "Markdown (*.md)",
         )
         if not path:
             return
         export_markdown(self.job, self._source_name(), path)
-        QMessageBox.information(self, "ذخیره", f"ذخیره شد:\n{path}")
+        QMessageBox.information(self, S("save_title"), S("saved_msg", path=path))
 
     def save_book_html(self):
         if not self.job or self.job.count() == 0:
-            QMessageBox.information(self, "ذخیره", "هنوز صفحه‌ای ترجمه نشده است.")
+            QMessageBox.information(self, S("save_title"), S("save_none"))
             return
-        if self.batch_worker is not None and self.batch_worker.isRunning():
-            QMessageBox.information(
-                self, "خروجی HTML",
-                "حین ترجمهٔ کل کتاب در دسترس نیست (همزمانی با PDF). "
-                "می‌توانید Markdown را همین حالا ذخیره کنید.",
-            )
+        if self._translation_active():
+            QMessageBox.information(self, S("html_title"), S("export_busy"))
             return
-        out_dir = QFileDialog.getExistingDirectory(
-            self, "پوشهٔ خروجی کتاب HTML"
-        )
+        out_dir = QFileDialog.getExistingDirectory(self, S("html_dir_title"))
         if not out_dir:
             return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         QApplication.processEvents()
         try:
-            index_path = export_html(self.job, self.doc, self._source_name(), out_dir)
+            index_path = export_html(
+                self.job, self.doc, self._source_name(), out_dir,
+                direction=self.cfg.get("direction", "en2fa"),
+            )
         finally:
             QApplication.restoreOverrideCursor()
         QMessageBox.information(
-            self, "خروجی HTML",
-            f"کتاب کامل با تصاویر ساخته شد:\n{index_path}\n\n"
-            "برای تبدیل به PDF: فایل را در مرورگر باز کنید و Print → Save as PDF.",
+            self, S("html_title"), S("html_done", path=index_path)
         )
 
     def copy_translation(self):
         text = self.txt_output.toPlainText()
         if text:
             QApplication.clipboard().setText(text)
-            self.lbl_status.setText("📋 کپی شد")
+            self.lbl_status.setText(S("copied"))
 
 
 if __name__ == "__main__":

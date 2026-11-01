@@ -1,4 +1,4 @@
-![Kaman AI Translator v3.0.0 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
+![Kaman AI Translator v3.1.0 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
 
 ### 🌐 Telegram: [@mohaka_programmer](https://t.me/mohaka_programmer)
 
@@ -10,7 +10,7 @@
 
 # Kaman AI Translator
 
-**A Persian-first desktop studio that turns PDF & EPUB books into fluent, academic Persian — and back into English — one page or an entire book, with a quality pipeline built for real, long documents.**
+**A Persian-first desktop studio that turns PDF & EPUB books into fluent, academic translations between English, Persian and Arabic — one page or an entire book, with a quality pipeline built for real, long documents.**
 
 <p align="center">
   <img src="icon.png" width="128" alt="Kaman AI Translator icon">
@@ -20,7 +20,7 @@
   <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/Mohammad-Hasan-Kaman/kaman-ai-translator?label=release&color=blue" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/python-3.11%2B-orange?logo=python" alt="Python">
-  <img src="https://img.shields.io/badge/UI-PyQt6%20·%20100%25%20RTL-3b82f6" alt="UI: PyQt6, 100% RTL">
+  <img src="https://img.shields.io/badge/UI-PyQt6%20·%20FA%2FEN-3b82f6" alt="UI: PyQt6, Persian/English">
   <img src="https://img.shields.io/badge/tests-303%20offline%20checks-brightgreen" alt="303 offline tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
@@ -94,12 +94,13 @@ Translating a 300-page book with a chat window does not work: context windows ar
 - **Completeness-enforcing prompts:** no omissions, no summaries; paragraph structure, numbers, equations and citation markers (`[12]`) are preserved; one consistent term per concept.
 - **Automatic QC review loop** (optional): each translation is compared against the source; meaning drift and omissions are flagged and corrected (doubles API usage).
 - **JSON-safety:** raw-JSON model replies are detected, unwrapped and cleaned — you never see JSON garbage in the output.
-- **Bidirectional:** English ⇄ Persian with a dedicated language bar; the direction is remembered across sessions.
+- **Three languages, every direction:** English, Persian and Arabic in any pairing, with a dedicated language bar; the direction is remembered across sessions.
 
 ### 3. Engines & providers
 
 - **Google Gemini** (official SDK), or **any OpenAI-compatible endpoint** — Ollama / LM Studio / llama.cpp locally, or cloud aggregators.
-- Built-in **Test connection** with a clear success/failure report.
+- **Per-engine memory:** each engine keeps its own base URL, API key and model — switching engines never leaks one engine's values into the other, and switching back restores yours.
+- Built-in **Test connection** with a clear success/failure report; for OpenAI-compatible servers it also verifies structured (JSON) output and warns about small local context windows.
 - Automatic **retry** on transient failures and quota detection with a safe pause.
 
 ### Local servers (Ollama / LM Studio)
@@ -128,7 +129,7 @@ Press **Test connection** after entering the values; a success report means the 
 
 ### 5. Interface
 
-- **100% right-to-left Persian UI** with Persian numerals — every dialog, menu and alignment.
+- **Bilingual UI (Persian / English)** with automatic RTL/LTR layout — every dialog, menu and alignment follows the chosen language.
 - Themes: **System / Dark / Light**.
 - Clear control states: the **Copy** button is blue when the page is ready and gray otherwise; every action carries a tooltip explaining when to use it.
 - Progress percentage follows RTL (fills from the right, number on the right).
@@ -137,7 +138,7 @@ Press **Test connection** after entering the values; a success report means the 
 ### 6. Save & export
 
 - Per-page auto-save to a per-file job store (resume-safe across restarts and app updates).
-- Export the current page as **TXT**, the whole book as **Markdown**, or a complete **RTL HTML book with page images** — open it in any browser and use *Print → Save as PDF* for a finished Persian PDF.
+- Export the current page as **TXT**, the whole book as **Markdown**, or a complete **HTML book with page images** (direction follows the target language) — open it in any browser and use *Print → Save as PDF* for a finished PDF.
 - Per-page **“Reviewed ✓”** human-approval checkbox that feeds the statistics and your final quality check.
 
 ---
@@ -160,7 +161,7 @@ provider (Gemini or any OpenAI-compatible server)
 optional QC pass — translation compared against the source & corrected
    │
    ▼
-per-page save (resume-safe job store)  →  TXT / Markdown / RTL HTML export
+per-page save (resume-safe job store)  →  TXT / Markdown / HTML export
 ```
 
 The UI runs on `QThread` workers — translation, structure analysis and exports never freeze the window.
@@ -183,7 +184,7 @@ The UI runs on `QThread` workers — translation, structure analysis and exports
 
 ### Option A — Windows executable (recommended)
 
-Download `kaman-ai-translator-3.0.0.exe` from the [latest release](../../releases/latest) and run it. No Python required.
+Download `kaman-ai-translator-3.1.0.exe` from the [latest release](../../releases/latest) and run it. No Python required.
 
 ### Option B — Run from source
 
@@ -236,7 +237,7 @@ pyinstaller --noconfirm --clean --onefile --windowed ^
   --icon icon.ico ^
   --add-data "icon.png;." ^
   --collect-all google --collect-all google_genai ^
-  --name kaman-ai-translator-3.0.0 ^
+  --name kaman-ai-translator-3.1.0 ^
   translator_app_v3.py
 ```
 
