@@ -220,6 +220,7 @@ python translator_app_v3.py
 | Base URL | Endpoint of an OpenAI-compatible server (ignored for Gemini). |
 | Model | Model name, e.g. `gemini-2.5-flash` or a local model id. |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
+| App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |
 | Theme | System / Dark / Light. |
 | Auto-analyze structure on file open | Free, fully local detection of headings & recurring labels of the opened book. |
 | AI deep structure pass | One extra API request that reads the table of contents and extracts headings, labels and a summary. |
@@ -232,17 +233,19 @@ python translator_app_v3.py
 ## Building the Windows executable
 
 ```bash
-pip install pyinstaller
+pip install -r requirements.txt pyinstaller
 pyinstaller --noconfirm --clean --onefile --windowed ^
   --icon icon.ico ^
   --add-data "icon.png;." ^
-  --collect-all google --collect-all google_genai ^
+  --collect-data google.genai ^
+  --collect-all pydantic --collect-all pydantic_core ^
   --name kaman-ai-translator-3.1.0 ^
   translator_app_v3.py
 ```
 
 > - `--add-data "icon.png;."` bundles the app icon **inside** the executable — without it the window/taskbar icon is missing in packaged builds.
-> - `--collect-all google` guarantees the full Gemini SDK (protobuf/grpc assets) is included.
+> - `--collect-data google.genai` includes the Gemini SDK's data files while avoiding optional local-tokenizer dependencies.
+> - `--collect-all pydantic --collect-all pydantic_core` includes Gemini's validation dependency in the executable.
 > - On Linux/macOS use `:` as the `--add-data` separator (e.g. `icon.png:.`).
 
 ---

@@ -68,6 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The settings template editor could not clear a book's template.
 - Closing the window during a translation now cancels the workers and
   waits briefly for a clean shutdown.
+- Light theme colors in Settings now keep helper text and section headings
+  readable against the light background.
+- Changing the app language now updates the main window immediately and
+  preserves the open book and current translation view.
+- `pydantic` is an explicit Gemini dependency and missing-install errors now
+  explain how to install the project requirements.
 
 ## [3.0.0] - 2026-10-10
 

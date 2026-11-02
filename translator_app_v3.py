@@ -127,13 +127,19 @@ def effective_theme(cfg):
     return "light" if theme == "light" else "dark"
 
 
-def section_label(text):
+def section_label(text, dark=True):
     """عنوان بخش با خط جداکننده — برای گروه‌بندی منظم دیالوگ‌ها."""
     lbl = QLabel(text)
-    lbl.setStyleSheet(
-        "font-weight: bold; font-size: 11pt; color: #3b82f6;"
-        "border-bottom: 1px solid #64748b; padding-bottom: 5px;"
-    )
+    if dark:
+        lbl.setStyleSheet(
+            "font-weight: bold; font-size: 11pt; color: #3b82f6;"
+            "border-bottom: 1px solid #64748b; padding-bottom: 5px;"
+        )
+    else:
+        lbl.setStyleSheet(
+            "font-weight: bold; font-size: 11pt; color: #2563eb;"
+            "border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;"
+        )
     return lbl
 
 
@@ -203,7 +209,7 @@ STRINGS = {
         "structure_ai_failed": "⚠️ تحلیل عمیق AI ناموفق بود (در تنظیمات قابل قطع است)",
         "open_title": "انتخاب کتاب",
         "settings_applied": "⚙️ تنظیمات جدید در ادامهٔ ترجمه اعمال می‌شود",
-        "lang_changed_note": "زبان برنامه عوض شد — برای اعمال کامل، برنامه را ببندید و دوباره باز کنید.",
+        "lang_changed_note": "زبان رابط برنامه تغییر کرد.",
         "restart_cleared": "🗑 ذخیرهٔ قبلی حذف شد — ترجمه از اول شروع می‌شود",
         "batch_header": "📚 ترجمهٔ خودکار — صفحهٔ {a} تا {b}",
         "qc_on": " | QC: روشن",
@@ -261,7 +267,7 @@ STRINGS = {
         "theme_dark": "دارک",
         "theme_light": "لایت",
         "ui_lang_label": "زبان برنامه:",
-        "ui_lang_hint": "تغییر زبان، پس از بستن و باز کردن دوبارهٔ برنامه به‌طور کامل اعمال می‌شود.",
+        "ui_lang_hint": "زبان رابط پس از ذخیره فوراً اعمال می‌شود.",
         "local_hint": "💡 سرور لوکال: مدل پیشنهادی qwen2.5:14b یا قوی‌تر است. در Ollama پنجرهٔ کانتکست پیش‌فرض کوچک است؛ برای کتاب‌های طولانی num_ctx را بالا ببرید (مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند.",
         "structure_section": "🧩 ساختار کتاب و تمپلیت",
         "struct_auto": "تحلیل خودکار ساختار هنگام باز شدن فایل (محلی و رایگان)",
@@ -346,7 +352,7 @@ STRINGS = {
         "structure_ai_failed": "⚠️ Deep AI structure analysis failed (can be turned off in Settings)",
         "open_title": "Open book",
         "settings_applied": "⚙️ New settings will apply to the rest of the translation",
-        "lang_changed_note": "App language changed — close and reopen the app to apply it fully.",
+        "lang_changed_note": "App interface language changed.",
         "restart_cleared": "🗑 Previous progress cleared — translation restarts from the beginning",
         "batch_header": "📚 Auto translation — pages {a} to {b}",
         "qc_on": " | QC: on",
@@ -404,7 +410,7 @@ STRINGS = {
         "theme_dark": "Dark",
         "theme_light": "Light",
         "ui_lang_label": "App language:",
-        "ui_lang_hint": "The language is fully applied after closing and reopening the app.",
+        "ui_lang_hint": "The interface language takes effect as soon as you save.",
         "local_hint": "💡 Local server: a recommended model is qwen2.5:14b or stronger. Ollama's default context window is small; for long books raise num_ctx (e.g. 16384) or replies will be cut off.",
         "structure_section": "🧩 Book structure & template",
         "struct_auto": "Automatic structure analysis when a file opens (local & free)",
@@ -739,6 +745,7 @@ class SettingsDialog(QDialog):
         self.job = job   # فایلِ باز جاری (برای ویرایشگر تمپلیت)
         self._test_worker = None
         self._provider = self.cfg.get("provider", "gemini")
+        self._theme_mode = effective_theme(cfg)
 
         # پنجره نباید از صفحه بزرگ‌تر شود (گزارش کاربران: رفتن زیر تسک‌بار):
         # ارتفاع سقف‌دار + محتوای اسکرول‌دار، با دکمه‌های ثابت در پایین.
@@ -802,17 +809,19 @@ class SettingsDialog(QDialog):
         # راهنمای سرور لوکال (فقط برای موتور سازگار با OpenAI دیده می‌شود)
         self.lbl_local_hint = QLabel(S("local_hint"))
         self.lbl_local_hint.setWordWrap(True)
-        self.lbl_local_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        hint_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
+        self.lbl_local_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_local_hint)
 
         self.lbl_encrypt = QLabel(S("encrypt_note"))
-        self.lbl_encrypt.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        self.lbl_encrypt.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_encrypt)
 
         data_row = QHBoxLayout()
         self.lbl_data_dir = QLabel(core.config_dir())
+        dir_color = "#38bdf8" if self._theme_mode == "dark" else "#2563eb"
         self.lbl_data_dir.setStyleSheet(
-            "color: #38bdf8; font-size: 9pt; font-family: Consolas, monospace;"
+            f"color: {dir_color}; font-size: 9pt; font-family: Consolas, monospace;"
         )
         self.lbl_data_dir.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
@@ -854,11 +863,13 @@ class SettingsDialog(QDialog):
         layout.addLayout(lang_row)
         lbl_lang_hint = QLabel(S("ui_lang_hint"))
         lbl_lang_hint.setWordWrap(True)
-        lbl_lang_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        lbl_lang_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
         layout.addWidget(lbl_lang_hint)
 
         # --- ساختار کتاب / تمپلیت (سه سوییچ جداگانه) ---
-        layout.addWidget(section_label(S("structure_section")))
+        layout.addWidget(section_label(
+            S("structure_section"), dark=(self._theme_mode == "dark")
+        ))
 
         self.chk_struct_auto = QCheckBox(S("struct_auto"))
         self.chk_struct_auto.setChecked(bool(self.cfg.get("structure_auto", True)))
@@ -888,7 +899,7 @@ class SettingsDialog(QDialog):
         ev.addWidget(self.txt_labels)
         self.lbl_editor_hint = QLabel("")
         self.lbl_editor_hint.setWordWrap(True)
-        self.lbl_editor_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        self.lbl_editor_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
         ev.addWidget(self.lbl_editor_hint)
 
         if self.job and self.job.structure:
@@ -1035,13 +1046,16 @@ class BatchDialog(QDialog):
             self.setMaximumHeight(max(380, screen.availableGeometry().height() - 30))
         self._total = total_pages
         self.job = job
+        self._theme_mode = effective_theme(parent.cfg if parent else {})
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(12)
 
         # --- بخش ۱: محدوده ---
-        layout.addWidget(section_label(S("range_section")))
+        layout.addWidget(section_label(
+            S("range_section"), dark=(self._theme_mode == "dark")
+        ))
         self.radio_all = QRadioButton(S("all_pages", n=num(total_pages)))
         self.radio_all.setChecked(True)
         self.radio_range = QRadioButton(S("range_radio"))
@@ -1077,7 +1091,8 @@ class BatchDialog(QDialog):
         self.radio_restart = None
         self.lbl_resume = QLabel("")
         self.lbl_resume.setWordWrap(True)
-        self.lbl_resume.setStyleSheet("color: #38bdf8; font-size: 9pt;")
+        resume_color = "#38bdf8" if self._theme_mode == "dark" else "#2563eb"
+        self.lbl_resume.setStyleSheet(f"color: {resume_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_resume)
         completed = job.count() if job else 0
         if completed:
@@ -1092,7 +1107,9 @@ class BatchDialog(QDialog):
             self.lbl_resume.hide()
 
         # --- بخش ۲: گزینه‌ها ---
-        layout.addWidget(section_label(S("options_section")))
+        layout.addWidget(section_label(
+            S("options_section"), dark=(self._theme_mode == "dark")
+        ))
         self.chk_structure = QCheckBox(S("structure_chk"))
         self.chk_structure.setChecked(bool(structure_default))
         layout.addWidget(self.chk_structure)
@@ -1116,7 +1133,8 @@ class BatchDialog(QDialog):
 
         # --- جمع‌بندی + دکمه‌ها (تفویق بصری: شروع پررنگ، انصراف خنثی) ---
         self.lbl_estimate = QLabel("")
-        self.lbl_estimate.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        estimate_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
+        self.lbl_estimate.setStyleSheet(f"color: {estimate_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_estimate)
 
         btn_row = QHBoxLayout()
@@ -1339,7 +1357,8 @@ class ModernTranslatorApp(QMainWindow):
         self.combo_tgt.currentIndexChanged.connect(self.on_tgt_changed)
 
         lbl_lang_hint = QLabel(S("lang_hint"))
-        lbl_lang_hint.setStyleSheet("color: #94a3b8; font-size: 9pt;")
+        lang_hint_color = "#94a3b8" if effective_theme(self.cfg) == "dark" else "#64748b"
+        lbl_lang_hint.setStyleSheet(f"color: {lang_hint_color}; font-size: 9pt;")
 
         lang_layout.addWidget(self.lbl_src_lang)
         lang_layout.addWidget(self.combo_src)
@@ -1503,6 +1522,77 @@ class ModernTranslatorApp(QMainWindow):
                 "background-color: #fbbf24; color: #451a03; font-weight: bold;"
             )
 
+    def refresh_ui_language(self, previous_language=None):
+        """Refresh all main-window labels without discarding the open book."""
+        self.lbl_file.setText(
+            f"📂 {os.path.basename(self.current_file)}"
+            if self.current_file else S("no_file")
+        )
+        self.btn_settings.setText(S("settings"))
+        self.btn_open.setText(S("open_book"))
+        self.lbl_page.setText(
+            S("page_label", cur=num(self.current_page + 1), total=num(self.total_pages))
+        )
+        self.lbl_src_lang.setText(S("src_lang"))
+        self.lbl_tgt_lang.setText(S("tgt_lang"))
+        for combo in (self.combo_src, self.combo_tgt):
+            for i in range(combo.count()):
+                lang = combo.itemData(i)
+                label_key = {"en": "lang_en", "fa": "lang_fa", "ar": "lang_ar"}.get(lang)
+                if label_key:
+                    combo.setItemText(i, S(label_key))
+
+        self.btn_next.setText(S("next_page"))
+        self.btn_prev.setText(S("prev_page"))
+        self.btn_translate.setText(S("translate_page"))
+        self.btn_batch.setText(S("translate_book"))
+        self.btn_copy.setText(S("copy"))
+        self.btn_copy.setToolTip(S("copy_tip"))
+        self.btn_save.setText(S("save"))
+        self.act_save_page.setText(S("save_page_act"))
+        self.act_save_md.setText(S("save_md_act"))
+        self.act_save_html.setText(S("save_html_act"))
+        self.btn_view_source.setText(S("view_image") if self.view_source else S("view_source"))
+        self.chk_reviewed.setText(S("reviewed"))
+        self.chk_reviewed.setToolTip(S("reviewed_tip"))
+        self.lbl_output_title.setText(S("output_title"))
+        self.txt_output.setPlaceholderText(S("output_placeholder"))
+        self.txt_source.setPlaceholderText(S("source_placeholder"))
+        old_strings = STRINGS.get(previous_language, {})
+        current_output = self.txt_output.toPlainText()
+        if current_output == old_strings.get("output_placeholder"):
+            self.txt_output.setText(S("output_placeholder"))
+        elif current_output == old_strings.get("click_translate"):
+            self.txt_output.setText(S("click_translate"))
+        self.lbl_page_title.setText(
+            S("page_text_title") if self.view_source else S("page_image_title")
+        )
+        if not self.doc:
+            self.lbl_image_viewer.setText(S("image_placeholder"))
+
+        paused = self.batch_worker is not None and self.batch_worker.is_paused()
+        self.btn_pause.setText(S("resume_btn") if paused else S("pause"))
+        self.btn_cancel_batch.setText(S("cancel_btn"))
+        if self.job and self.job.count():
+            self.lbl_status.setText(S("resume_hint", n=num(self.job.count())))
+        else:
+            self.lbl_status.setText(S("ready"))
+        self.update_stats()
+
+        if self.progress_bar.isVisible():
+            if self.progress_bar.maximum() > self.progress_bar.minimum():
+                pct = round(100 * self.progress_bar.value() / self.progress_bar.maximum())
+                self.lbl_percent.setText(S("percent", n=num(pct)))
+            else:
+                self.lbl_percent.setText("…")
+
+        app = QApplication.instance()
+        if app is not None:
+            app.setLayoutDirection(
+                Qt.LayoutDirection.RightToLeft if _UI_LANG == "fa"
+                else Qt.LayoutDirection.LeftToRight
+            )
+
     def _on_system_scheme(self, *_args):
         if self.cfg.get("theme", "system") == "system":
             self.apply_theme()
@@ -1518,9 +1608,9 @@ class ModernTranslatorApp(QMainWindow):
         self.apply_theme()
         self.apply_output_direction()
         if new_cfg.get("ui_lang", "fa") != _UI_LANG:
-            # زبان پیام‌های هسته و دیالوگ‌های بعدی فوراً عوض می‌شود؛
-            # متن‌های پنجرهٔ اصلی با باز شدن دوبارهٔ برنامه کامل می‌شوند.
+            previous_language = _UI_LANG
             set_ui_lang(new_cfg.get("ui_lang", "fa"))
+            self.refresh_ui_language(previous_language)
             self.lbl_status.setText(S("lang_changed_note"))
         # اگر ویرایشگر تمپلیت تغییر کرده باشد، ساختار همگام می‌شود
         if self.job is not None:

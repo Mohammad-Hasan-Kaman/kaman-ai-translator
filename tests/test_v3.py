@@ -425,7 +425,7 @@ except k.TranslationError:
 
 print("== K. UI: پنجره، فایل، نمایش ذخیره‌شده، بازبینی، نمای مبدأ ==")
 win = t3.ModernTranslatorApp()
-check("window title v3", "3.0.0" in win.windowTitle())
+check("window title v3", "3.1.0" in win.windowTitle())
 
 win.doc = pymupdf.open(pdf1)
 win.current_file = pdf1
@@ -436,7 +436,7 @@ win.structure = win.job.structure
 win.update_ui_controls()
 win.update_stats()
 win.refresh_current_page()
-check("stats show 3 translated", "ترجمه‌شده: 3" in win.lbl_stats.text(), win.lbl_stats.text())
+check("stats show 3 translated", "ترجمه‌شده: ۳" in win.lbl_stats.text(), win.lbl_stats.text())
 check("cached translation shown", win.txt_output.toPlainText() == "الف")
 check("copy enabled for cached", win.btn_copy.isEnabled())
 check("review checkbox enabled", win.chk_reviewed.isEnabled())
@@ -460,7 +460,7 @@ win.refresh_current_page()
 check("translated page 2 shows cache", win.txt_output.toPlainText() == "ب")
 win.chk_reviewed.setChecked(True)
 check("review flag stored", win.job.is_reviewed(1))
-check("stats updated", "بازبینی‌شده: 2" in win.lbl_stats.text(), win.lbl_stats.text())
+check("stats updated", "بازبینی‌شده: ۲" in win.lbl_stats.text(), win.lbl_stats.text())
 win.chk_reviewed.setChecked(False)
 check("review flag removed", not win.job.is_reviewed(1))
 
@@ -475,10 +475,10 @@ check("view switched back", not win.view_source and not win.scroll_area.isHidden
 
 # زبان مبدأ/مقصد: قفل دوگانه + راست‌چینی کامل برنامه
 check("app is fully RTL", app.layoutDirection().name == "RightToLeft")
-check("language row has both combos", win.combo_src.count() == 2 and win.combo_tgt.count() == 2)
+check("language row has three-language combos", win.combo_src.count() == 3 and win.combo_tgt.count() == 3)
 check("initial lockstep en2fa",
       win.combo_src.currentData() == "en" and win.combo_tgt.currentData() == "fa")
-win.combo_tgt.setCurrentIndex(1)   # مقصد ← انگلیسی
+win.combo_tgt.setCurrentIndex(0)   # مقصد ← انگلیسی
 check("target change flips source automatically", win.combo_src.currentData() == "fa")
 check("direction switched+persisted", k.load_config()["direction"] == "fa2en")
 check("output LTR for english target", win.txt_output.layoutDirection().name == "LeftToRight")
@@ -521,7 +521,7 @@ check("custom range", bd.range_0based() == (2, 6))
 check("qc default on", bd.chk_qc.isChecked())
 check("structure default on", bd.chk_structure.isChecked())
 check("resume info shown", "قبلاً ترجمه" in bd.lbl_resume.text())
-check("estimate text", "5" in bd.lbl_estimate.text())
+check("estimate text", t3.num(5) in bd.lbl_estimate.text())
 
 # گارد بدون کلید
 warns, opened = [], []
@@ -581,7 +581,7 @@ check("first page done", ok_first, f"count={win.job.count()}")
 check("view followed worker to its page", win.current_page in (0, 1),
       f"current_page={win.current_page}")
 check("page label matches followed view (no one-page lag)",
-      str(win.current_page + 1) in win.lbl_page.text(),
+      t3.num(win.current_page + 1) in win.lbl_page.text(),
       f"lbl={win.lbl_page.text()} current={win.current_page}")
 
 # توقف
@@ -617,9 +617,9 @@ check("finished dialog shown", any("6 صفحه" in str(m) for m in info_boxes), 
 check("qc ran per page", stub_batch.qc_calls == 6, str(stub_batch.qc_calls))
 check("batch used book structure template",
       "BOOK STRUCTURE" in stub_batch.calls[0]["system"])
-check("pages appended to output", "── صفحهٔ 1 ──" in win.txt_output.toPlainText())
-check("output has page 6", "── صفحهٔ 6 ──" in win.txt_output.toPlainText())
-check("stats complete", "ترجمه‌شده: 6 از 6" in win.lbl_stats.text(), win.lbl_stats.text())
+check("pages appended to output", f"── صفحهٔ {t3.num(1)} ──" in win.txt_output.toPlainText())
+check("output has page 6", f"── صفحهٔ {t3.num(6)} ──" in win.txt_output.toPlainText())
+check("stats complete", "ترجمه‌شده: ۶ از ۶" in win.lbl_stats.text(), win.lbl_stats.text())
 check("controls re-enabled", win.btn_translate.isEnabled() and win.btn_batch.isEnabled())
 check("pause hidden after finish", win.btn_pause.isHidden())
 check("job persisted on disk", k.JobStore(pdf2).load().count() == 6)
@@ -831,7 +831,7 @@ fresh_job = k.JobStore(os.path.join(TEST_HOME, "fresh_book.pdf"))
 bd3 = t3.BatchDialog(5, fresh_job, structure_default=False)
 check("resume row hidden for fresh book", bd3.lbl_resume.isHidden())
 check("estimate for fresh book: all 5 untranslated",
-      "ترجمه‌نشده: 5" in bd3.lbl_estimate.text(), bd3.lbl_estimate.text())
+      f"ترجمه‌نشده: {t3.num(5)}" in bd3.lbl_estimate.text(), bd3.lbl_estimate.text())
 check("structure default follows settings toggle", not bd3.chk_structure.isChecked())
 check("qc stays default on", bd3.chk_qc.isChecked())
 check("spin boxes wide enough for single digits",
@@ -1086,7 +1086,7 @@ check("review checkbox has tooltip", "تأیید" in (win.chk_reviewed.toolTip()
 # (۲) شمارهٔ صفحه با نما همراه می‌شود (رفع «همیشه یک صفحه عقب»)
 win.current_page = 4
 win.refresh_current_page(keep_output=True)
-check("page label follows the view", "صفحه: 5" in win.lbl_page.text(),
+check("page label follows the view", f"صفحه: {t3.num(5)}" in win.lbl_page.text(),
       win.lbl_page.text())
 win.current_page = 0
 win.refresh_current_page(keep_output=True)
@@ -1104,11 +1104,11 @@ check("resume/restart radios shown for saved book",
       bd_r.radio_keep is not None and bd_r.radio_restart is not None)
 check("keep chosen by default", not bd_r.wants_restart())
 check("estimate counts only untranslated by default",
-      "ترجمه‌نشده: 2" in bd_r.lbl_estimate.text(), bd_r.lbl_estimate.text())
+      f"ترجمه‌نشده: {t3.num(2)}" in bd_r.lbl_estimate.text(), bd_r.lbl_estimate.text())
 bd_r.radio_restart.setChecked(True)
 check("restart selectable", bd_r.wants_restart())
 check("estimate counts all pages after restart",
-      "ترجمه‌نشده: 4" in bd_r.lbl_estimate.text(), bd_r.lbl_estimate.text())
+      f"ترجمه‌نشده: {t3.num(4)}" in bd_r.lbl_estimate.text(), bd_r.lbl_estimate.text())
 bd_fresh = t3.BatchDialog(4, k.JobStore(os.path.join(TEST_HOME, "fresh2.pdf")))
 check("no radios for a fresh book",
       bd_fresh.radio_keep is None and not bd_fresh.wants_restart())

@@ -64,6 +64,10 @@ _MSGS = {
         "model_empty": "نام مدل را وارد کنید (مثلاً llama3.2 یا qwen2.5:14b).",
         "gemini_key_empty": "API key گوگل تنظیم نشده است. از دکمهٔ «تنظیمات» آن را وارد کنید.",
         "gemini_key_missing": "API key گوگل تنظیم نشده است.",
+        "missing_pydantic": (
+            "وابستگی pydantic نصب نیست. در محیط برنامه دستور "
+            "pip install -r requirements.txt را اجرا کنید."
+        ),
         "model_not_set": "نام مدل تنظیم نشده است (تنظیمات → مدل).",
         "empty_response": "پاسخ خالی از سرور دریافت شد.",
         "server_timeout": "زمان اتصال به سرور تمام شد (timeout).",
@@ -97,6 +101,10 @@ _MSGS = {
         "model_empty": "Enter a model name (e.g. llama3.2 or qwen2.5:14b).",
         "gemini_key_empty": "The Google API key is not set. Enter it from the Settings button.",
         "gemini_key_missing": "The Google API key is not set.",
+        "missing_pydantic": (
+            "The pydantic dependency is missing. Install the app requirements with "
+            "pip install -r requirements.txt."
+        ),
         "model_not_set": "No model name is set (Settings → Model).",
         "empty_response": "The server returned an empty response.",
         "server_timeout": "The connection to the server timed out.",
@@ -1148,7 +1156,12 @@ class GeminiEngine(BaseEngine):
     provider = "gemini"
 
     def __init__(self, api_key, model, temperature=0.1):
-        from google import genai  # ایمپورت تنبل برای حالت بدون gemini
+        try:
+            from google import genai  # ایمپورت تنبل برای حالت بدون gemini
+        except ModuleNotFoundError as exc:
+            if exc.name == "pydantic":
+                raise TranslationError(msg("missing_pydantic")) from exc
+            raise
 
         self.client = genai.Client(api_key=api_key)
         self.model = model or "gemini-2.5-flash"
