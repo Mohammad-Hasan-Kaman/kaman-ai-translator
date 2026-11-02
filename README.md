@@ -217,7 +217,8 @@ python translator_app_v3.py
 | Setting | Description |
 |---|---|
 | Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
-| Base URL | Endpoint of an OpenAI-compatible server (ignored for Gemini). |
+| Base URL | OpenAI-compatible endpoint, or an optional Gemini-native API gateway URL for Gemini. |
+| Gemini proxy | Optional HTTP(S) network proxy for Gemini (for example `http://127.0.0.1:7890`). If blank, the SDK uses the system `HTTPS_PROXY` setting. |
 | Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default or automatic discovery from an OpenAI-compatible server. |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
 | App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |

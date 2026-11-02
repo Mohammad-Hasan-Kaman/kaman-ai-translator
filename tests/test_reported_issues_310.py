@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 _TEST_HOME = tempfile.mkdtemp(prefix="kaman_v310_reported_")
@@ -159,6 +160,111 @@ class ReportedIssueTests(unittest.TestCase):
             "gemini": {"api_key": "", "base_url": "", "model": "gemini-2.5-flash"}
         })
         self.assertEqual(cfg["model"], "gemini-3.8-flash")
+
+    def test_legacy_openai_default_is_not_migrated_as_gemini_endpoint(self):
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini")
+        cfg["base_url"] = "http://localhost:11434/v1"
+        core._ensure_profiles(cfg)
+        self.assertEqual(cfg["profiles"]["gemini"]["base_url"], "")
+
+    def test_old_ignored_loopback_endpoint_is_migrated_away(self):
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", base_url="http://localhost:20128/v1", gemini_endpoint_version=0)
+        core._ensure_profiles(cfg, {
+            "gemini": {"api_key": "", "base_url": "http://localhost:20128/v1", "model": "gemini-3.8-flash"}
+        })
+        self.assertEqual(cfg["profiles"]["gemini"]["base_url"], "")
+        self.assertEqual(cfg["gemini_endpoint_version"], 1)
+
+    def test_explicit_new_gemini_endpoint_is_preserved(self):
+        endpoint = "http://localhost:9000/gemini"
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", base_url=endpoint, gemini_endpoint_version=1)
+        core._ensure_profiles(cfg, {
+            "gemini": {"api_key": "", "base_url": endpoint, "model": "gemini-3.8-flash"}
+        })
+        self.assertEqual(cfg["profiles"]["gemini"]["base_url"], endpoint)
+
+    def test_gemini_can_use_custom_native_api_gateway(self):
+        gateway = "https://gemini-gateway.example/v1beta"
+        engine = core.GeminiEngine("test-key", "gemini-3.8-flash", base_url=gateway)
+        self.assertEqual(
+            engine.client._api_client._http_options.base_url,
+            gateway,
+        )
+        self.assertEqual(engine.client._api_client._http_options.timeout, 90_000)
+
+    def test_gemini_proxy_is_passed_to_transport_and_profile_isolated(self):
+        proxy = "http://127.0.0.1:7890"
+        engine = core.GeminiEngine("test-key", "gemini-3.8-flash", proxy_url=proxy)
+        opts = engine.client._api_client._http_options
+        self.assertEqual(opts.client_args["proxy"], proxy)
+        self.assertEqual(opts.async_client_args["proxy"], proxy)
+
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", api_key="key", gemini_proxy=proxy)
+        core._ensure_profiles(cfg)
+        core.switch_provider(cfg, "openai")
+        self.assertEqual(cfg["profiles"]["gemini"]["proxy"], proxy)
+        core.switch_provider(cfg, "gemini")
+        self.assertEqual(cfg["gemini_proxy"], proxy)
+
+    def test_gemini_proxy_is_encrypted_and_restored(self):
+        proxy = "http://proxy-user:proxy-pass@127.0.0.1:7890"
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", api_key="key", gemini_proxy=proxy)
+        core._ensure_profiles(cfg)
+        core.save_config(cfg)
+        with open(core.config_file_path(), encoding="utf-8") as fh:
+            stored = fh.read()
+        self.assertNotIn(proxy, stored)
+        restored = core.load_config()
+        self.assertEqual(restored["gemini_proxy"], proxy)
+
+    def test_invalid_gemini_proxy_is_rejected_before_connection(self):
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", api_key="key", gemini_proxy="bad-url")
+        self.assertIn("http://", core.validate_config(cfg))
+
+    def test_settings_proxy_field_is_separate_from_openai_base_url(self):
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", api_key="key", gemini_proxy="http://127.0.0.1:7890")
+        core._ensure_profiles(cfg)
+        window = ui.ModernTranslatorApp()
+        dialog = ui.SettingsDialog(cfg, window)
+        self.assertFalse(dialog.txt_gemini_proxy.isHidden())
+        dialog.combo_provider.setCurrentIndex(1)
+        self.assertTrue(dialog.txt_gemini_proxy.isHidden())
+        self.assertEqual(dialog.txt_base.text(), cfg["profiles"]["openai"]["base_url"])
+        dialog.combo_provider.setCurrentIndex(0)
+        self.assertFalse(dialog.txt_gemini_proxy.isHidden())
+        self.assertEqual(dialog.txt_gemini_proxy.text(), "http://127.0.0.1:7890")
+        dialog.close()
+        window.close()
+
+    def test_gemini_retries_transient_gateway_deadlines(self):
+        from google.genai.errors import APIError
+
+        engine = core.GeminiEngine("test-key", "gemini-3.8-flash")
+        failure = APIError(504, {"message": "DEADLINE_EXCEEDED"})
+        expected = object()
+        engine.client.models.generate_content = mock.Mock(
+            side_effect=[failure, failure, expected]
+        )
+        with mock.patch("kaman_core.time.sleep"):
+            response = engine._call("prompt", None, False)
+        self.assertIs(response, expected)
+        self.assertEqual(engine.client.models.generate_content.call_count, 3)
+
+    def test_default_gemini_falls_back_after_temporary_model_overload(self):
+        from google.genai.errors import APIError
+
+        engine = core.GeminiEngine("test-key", "gemini-3.8-flash")
+        overloaded = APIError(503, {"message": "model currently experiencing high demand"})
+        expected = object()
+        engine.client.models.generate_content = mock.Mock(
+            side_effect=[overloaded, overloaded, overloaded, overloaded, expected]
+        )
+        with mock.patch("kaman_core.time.sleep"):
+            response = engine._call("prompt", None, False)
+        self.assertIs(response, expected)
+        called_models = [call.kwargs["model"] for call in engine.client.models.generate_content.call_args_list]
+        self.assertEqual(called_models, ["gemini-3.8-flash"] * 4 + ["gemini-3.6-flash"])
+        self.assertEqual(engine.last_used_model, "gemini-3.6-flash")
 
 
 if __name__ == "__main__":

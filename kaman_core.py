@@ -19,6 +19,7 @@ import threading
 import html as html_mod
 import urllib.request
 import urllib.error
+import urllib.parse
 from collections import Counter
 
 import pymupdf  # PyMuPDF (نام جدید؛ fitz فقط نام قدیمی است و هشدار می‌دهد)
@@ -103,8 +104,10 @@ _MSGS = {
         "gemini_key_error": "کلید Gemini معتبر نیست یا دسترسی Generative Language API برای آن فعال نیست. کلید و فعال بودن API را بررسی کنید.",
         "gemini_model_error": "مدل Gemini «{model}» در دسترس این کلید نیست یا شناسهٔ آن معتبر نیست. شناسهٔ مدل را بررسی کنید یا فیلد مدل را خالی بگذارید تا مدل پیش‌فرض امتحان شود.",
         "gemini_http_error": "اتصال Gemini با خطای دسترسی/API ({code}) رد شد. کلید، دسترسی API و محدودیت‌های منطقه‌ای/شبکه را بررسی کنید. جزئیات: {detail}",
+        "gemini_proxy_invalid": "آدرس پراکسی باید با http:// یا https:// شروع شود و میزبان/درگاه معتبر داشته باشد.",
         "gemini_blocked": "Google پاسخ Gemini را به‌دلیل فیلتر ایمنی رد کرد ({reason}). متن مبدأ را بررسی کنید یا از مدلی/سرویسی استفاده کنید که این محتوای کتاب را می‌پذیرد.",
         "gemini_network_error": "ارتباط با Google Gemini برقرار نشد یا بیش از حد طول کشید. اینترنت، پراکسی/فایروال و دسترسی منطقه‌ای را بررسی کنید. اگر از IP ایران استفاده می‌کنید، ممکن است محدودیت دسترسی Google دخیل باشد. جزئیات: {detail}",
+        "gemini_fallback": "مدل پیش‌فرض شلوغ بود؛ اتصال با مدل جایگزین {model} موفق شد.",
         "legacy_job_archived": "{n} ترجمهٔ ذخیره‌شده از نسخهٔ قدیمی زبان مقصد مشخصی نداشت؛ برای جلوگیری از نمایش ترجمه با زبان اشتباه، نگه‌داری شد اما برای این زبان دوباره ترجمه می‌شود.",
     },
     "en": {
@@ -151,8 +154,10 @@ _MSGS = {
         "gemini_key_error": "The Gemini API key is invalid, or the Generative Language API is not enabled for it. Check the key and API access.",
         "gemini_model_error": "Gemini model '{model}' is unavailable to this key or the model ID is invalid. Check its ID, or leave Model blank to try the default model.",
         "gemini_http_error": "Gemini rejected the request ({code}). Check the API key, API access, and regional/network restrictions. Details: {detail}",
+        "gemini_proxy_invalid": "The proxy URL must start with http:// or https:// and include a valid host and port.",
         "gemini_blocked": "Google blocked the Gemini response with a safety filter ({reason}). Review the source passage or use a model/service that permits this book content.",
         "gemini_network_error": "Could not reach Google Gemini before the request timed out. Check your internet connection, proxy/firewall, and regional availability. If you are using an Iran IP, Google access restrictions may be involved. Details: {detail}",
+        "gemini_fallback": "The default model was busy; connection succeeded with fallback model {model}.",
         "legacy_job_archived": "{n} saved page translations from an older version had no target-language metadata. They were preserved, but this language will be translated again to prevent mixing languages.",
     },
 }
@@ -172,6 +177,8 @@ CONFIG_DEFAULTS = {
     "api_key": "",
     "provider": "gemini",                 # gemini | openai
     "base_url": "http://localhost:11434/v1",
+    "gemini_proxy": "",
+    "gemini_endpoint_version": 1,
     "model": "gemini-3.8-flash",
     "direction": "en2fa",                 # en2fa | fa2en | en2ar | ar2en | fa2ar | ar2fa
     "ui_lang": "fa",                      # fa | en — زبان رابط کاربری
@@ -310,7 +317,7 @@ def jobs_dir():
 def default_profiles():
     """حافظهٔ پیش‌فرض هر موتور: کلید، آدرس سرور و مدلِ مخصوص خودش."""
     return {
-        "gemini": {"api_key": "", "base_url": "", "model": "gemini-3.8-flash"},
+        "gemini": {"api_key": "", "base_url": "", "proxy": "", "model": "gemini-3.8-flash"},
         "openai": {
             "api_key": "",
             "base_url": "http://localhost:11434/v1",
@@ -333,6 +340,8 @@ def _sync_active_profile(cfg):
     slot["api_key"] = cfg.get("api_key", "")
     slot["base_url"] = cfg.get("base_url", "")
     slot["model"] = cfg.get("model", "")
+    if provider == "gemini":
+        slot["proxy"] = cfg.get("gemini_proxy", "")
     return cfg
 
 
@@ -350,6 +359,7 @@ def switch_provider(cfg, new_provider):
     cfg["api_key"] = slot.get("api_key", "")
     cfg["base_url"] = slot.get("base_url", "")
     cfg["model"] = slot.get("model", "")
+    cfg["gemini_proxy"] = slot.get("proxy", "") if new_provider == "gemini" else cfg.get("gemini_proxy", "")
     return cfg
 
 
@@ -360,12 +370,34 @@ def _ensure_profiles(cfg, stored_profiles=None):
     if isinstance(stored_profiles, dict):
         for name, slot in stored_profiles.items():
             if name in profiles and isinstance(slot, dict):
-                for key in ("api_key", "base_url", "model"):
+                for key in ("api_key", "base_url", "model", "proxy"):
                     if key in slot:
                         profiles[name][key] = slot[key]
+    gemini_stored = stored_profiles.get("gemini", {}) if isinstance(stored_profiles, dict) else {}
+    if "proxy" not in gemini_stored and cfg.get("gemini_proxy"):
+        profiles["gemini"]["proxy"] = cfg["gemini_proxy"]
     # Gemini 2.5 Flash is now restricted for new API users. Migrate the old
     # shipped default (including blank values) to Google's current stable Flash.
     gemini = profiles["gemini"]
+    if cfg.get("gemini_endpoint_version", 0) != 1:
+        # Before this setting existed, Gemini ignored Base URL. Old loopback
+        # values usually belonged to the OpenAI engine; don't route Gemini to
+        # that server during one-time migration.
+        host = urllib.parse.urlparse(gemini.get("base_url", "")).hostname
+        if host in ("localhost", "127.0.0.1", "::1"):
+            gemini["base_url"] = ""
+            if cfg.get("provider", "gemini") == "gemini":
+                cfg["base_url"] = ""
+        cfg["gemini_endpoint_version"] = 1
+    # The old app's OpenAI-compatible default should not become Gemini's
+    # endpoint when migrating a config with no per-engine profiles.
+    if gemini.get("base_url", "").rstrip("/") == "http://localhost:11434/v1":
+        gemini["base_url"] = ""
+    if (
+        cfg.get("provider", "gemini") == "gemini"
+        and (cfg.get("base_url") or "").rstrip("/") == "http://localhost:11434/v1"
+    ):
+        cfg["base_url"] = ""
     if gemini.get("model") in (None, "", "gemini-2.5-flash"):
         gemini["model"] = "gemini-3.8-flash"
     if cfg.get("provider", "gemini") == "gemini" and cfg.get("model") in (
@@ -373,6 +405,8 @@ def _ensure_profiles(cfg, stored_profiles=None):
     ):
         cfg["model"] = "gemini-3.8-flash"
     cfg["profiles"] = profiles
+    if cfg.get("provider", "gemini") == "gemini":
+        cfg["gemini_proxy"] = profiles["gemini"].get("proxy", "")
     _sync_active_profile(cfg)
     return cfg
 
@@ -391,6 +425,7 @@ def load_config():
     cfg = dict(CONFIG_DEFAULTS)
     raw_key = ""
     stored_profiles = None
+    migrated_gemini_endpoint = False
     try:
         with open(config_file_path(), "r", encoding="utf-8") as fh:
             data = json.load(fh)
@@ -400,6 +435,13 @@ def load_config():
                 if k in CONFIG_DEFAULTS and k != "profiles"
             })
             raw_key = data.get("api_key", "")
+            if "gemini_endpoint_version" not in data:
+                cfg["gemini_endpoint_version"] = 0
+                migrated_gemini_endpoint = True
+            raw_proxy = data.get("gemini_proxy", "")
+            cfg["gemini_proxy"] = (
+                _safe_decrypt(raw_proxy) if is_encrypted(raw_proxy) else raw_proxy
+            )
             stored_profiles = data.get("profiles")
     except (OSError, ValueError):
         # کانفیگ خراب را کنار می‌گذاریم تا کلید رمزنگاری‌شده قابل بازیابی بماند
@@ -417,13 +459,18 @@ def load_config():
                 slot = dict(slot)
                 if "api_key" in slot:
                     slot["api_key"] = _safe_decrypt(slot.get("api_key", ""))
+                if "proxy" in slot and is_encrypted(slot.get("proxy", "")):
+                    slot["proxy"] = _safe_decrypt(slot.get("proxy", ""))
                 decrypted[name] = slot
         stored_profiles = decrypted
     _ensure_profiles(cfg, stored_profiles)
 
     # مهاجرت: کلید قدیمیِ رمزنگاری‌نشده را همین حالا رمزنگاری و ذخیره می‌کنیم
-    if raw_key and not is_encrypted(raw_key):
-        cfg["api_key"] = raw_key
+    if (raw_key and not is_encrypted(raw_key)) or migrated_gemini_endpoint:
+        if raw_key and not is_encrypted(raw_key):
+            cfg["api_key"] = raw_key
+        else:
+            cfg["api_key"] = _safe_decrypt(raw_key)
         save_config(cfg)
     else:
         cfg["api_key"] = _safe_decrypt(raw_key)
@@ -435,10 +482,12 @@ def save_config(cfg):
     _sync_active_profile(cfg)
     disk = dict(cfg)
     disk["api_key"] = encrypt_secret(cfg.get("api_key", ""))
+    disk["gemini_proxy"] = encrypt_secret(cfg.get("gemini_proxy", ""))
     profiles = {}
     for name, slot in (cfg.get("profiles") or {}).items():
         slot = dict(slot)
         slot["api_key"] = encrypt_secret(slot.get("api_key", ""))
+        slot["proxy"] = encrypt_secret(slot.get("proxy", ""))
         profiles[name] = slot
     disk["profiles"] = profiles
     path = config_file_path()
@@ -457,6 +506,11 @@ def validate_config(cfg):
         return None
     if not (cfg.get("api_key") or "").strip():
         return msg("gemini_key_empty")
+    proxy = (cfg.get("gemini_proxy") or "").strip()
+    if proxy:
+        parsed = urllib.parse.urlparse(proxy)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return msg("gemini_proxy_invalid")
     return None
 
 
@@ -1192,7 +1246,7 @@ class BaseEngine:
 class GeminiEngine(BaseEngine):
     provider = "gemini"
 
-    def __init__(self, api_key, model, temperature=0.1):
+    def __init__(self, api_key, model, temperature=0.1, base_url="", proxy_url=""):
         try:
             from google import genai  # ایمپورت تنبل برای حالت بدون gemini
         except ModuleNotFoundError as exc:
@@ -1202,12 +1256,22 @@ class GeminiEngine(BaseEngine):
 
         from google.genai import types
 
+        http_options = {"timeout": 90_000}
+        if (base_url or "").strip():
+            # Allows a user-configured Gemini-native API gateway/proxy. The
+            # official Google endpoint remains the default when left blank.
+            http_options["base_url"] = base_url.strip().rstrip("/")
+        if (proxy_url or "").strip():
+            proxy = proxy_url.strip()
+            http_options["client_args"] = {"proxy": proxy}
+            http_options["async_client_args"] = {"proxy": proxy}
         self.client = genai.Client(
             api_key=api_key,
-            http_options=types.HttpOptions(timeout=30_000),
+            http_options=types.HttpOptions(**http_options),
         )
         self.model = model or "gemini-3.8-flash"
         self.temperature = float(temperature)
+        self.last_used_model = self.model
 
     def _generation_config(self, system, json_mode):
         from google.genai import types
@@ -1226,62 +1290,84 @@ class GeminiEngine(BaseEngine):
     def _call(self, contents, system, json_mode):
         from google.genai.errors import APIError
         config = self._generation_config(system, json_mode)
-
-        delay = 4
+        models = [self.model]
+        # Google may temporarily return 503 for a hot model. Only when using
+        # the shipped default, fall back to another stable structured-output
+        # model; custom model choices remain under the user's control.
+        if self.model == "gemini-3.8-flash":
+            models.append("gemini-3.6-flash")
         last_err = None
-        for attempt in range(4):
-            try:
-                return self.client.models.generate_content(
-                    model=self.model, contents=contents, config=config
-                )
-            except APIError as err:
-                last_err = err
-                detail = str(err)
-                folded = detail.casefold()
-                code = str(err.code)
-                if any(marker in folded for marker in (
-                    "user location is not supported", "location is not supported",
-                    "not available in your country", "unsupported location",
-                    "region is not supported", "geographic location",
-                )):
-                    raise TranslationError(msg("gemini_location")) from err
-                if code in ("401", "403") and any(marker in folded for marker in (
-                    "api key", "permission_denied", "permission denied", "unauthorized",
-                )):
-                    raise TranslationError(msg("gemini_key_error")) from err
-                if code in ("400", "404") and any(marker in folded for marker in (
-                    "model", "not found", "not supported for generatecontent",
-                )):
-                    raise TranslationError(msg("gemini_model_error", model=self.model)) from err
-                if err.code == 429 and attempt == 3:
-                    raise QuotaExhaustedError(
-                        "سهمیهٔ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید."
-                    ) from err
-                if err.code == 504:
-                    if attempt < 1:
-                        time.sleep(2)
+        for model_index, model in enumerate(models):
+            delay = 2
+            try_next_model = False
+            for attempt in range(4):
+                try:
+                    response = self.client.models.generate_content(
+                        model=model, contents=contents, config=config
+                    )
+                    self.last_used_model = model
+                    return response
+                except APIError as err:
+                    last_err = err
+                    detail = str(err)
+                    folded = detail.casefold()
+                    code = str(err.code)
+                    if any(marker in folded for marker in (
+                        "user location is not supported", "location is not supported",
+                        "not available in your country", "unsupported location",
+                        "region is not supported", "geographic location",
+                    )):
+                        raise TranslationError(msg("gemini_location")) from err
+                    if code in ("401", "403") and any(marker in folded for marker in (
+                        "api key", "permission_denied", "permission denied", "unauthorized",
+                    )):
+                        raise TranslationError(msg("gemini_key_error")) from err
+                    if code in ("400", "404") and any(marker in folded for marker in (
+                        "model", "not found", "not supported for generatecontent",
+                    )):
+                        raise TranslationError(msg("gemini_model_error", model=model)) from err
+                    if err.code in (429, 500, 502, 503, 504) and attempt < 3:
+                        time.sleep(delay)
+                        delay *= 2
                         continue
+                    if err.code == 429:
+                        if model_index + 1 < len(models):
+                            try_next_model = True
+                            break
+                        raise QuotaExhaustedError(
+                            "سهمیه یا محدودیت نرخ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید."
+                        ) from err
+                    if err.code in (500, 502, 503, 504):
+                        if model_index + 1 < len(models):
+                            try_next_model = True
+                            break
+                        raise TranslationError(
+                            msg("gemini_network_error", detail=f"Gemini API returned HTTP {code}: {err}")
+                        ) from err
+                    if code in ("400", "401", "403", "404"):
+                        raise TranslationError(msg("gemini_http_error", code=code, detail=detail)) from err
+                    raise TranslationError(f"خطای API جمینای ({err.code}): {err}") from err
+                except Exception as err:  # noqa: BLE001
+                    last_err = err
+                    if attempt < 3:
+                        time.sleep(delay)
+                        delay *= 2
+                        continue
+                    if model_index + 1 < len(models):
+                        try_next_model = True
+                        break
                     raise TranslationError(
-                        msg("gemini_network_error", detail=f"Google returned 504 DEADLINE_EXCEEDED: {err}")
+                        msg("gemini_network_error", detail=err)
                     ) from err
-                if err.code in (429, 503) and attempt < 3:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                if code in ("400", "401", "403", "404"):
-                    raise TranslationError(msg("gemini_http_error", code=code, detail=detail)) from err
-                raise TranslationError(f"خطای API جمینای ({err.code}): {err}") from err
-            except Exception as err:  # noqa: BLE001
-                # خطای انتقال (قطع اتصال، DNS، timeout لایهٔ HTTP) — مثل بقیه
-                # خطاهای موقت تلاش مجدد می‌شود، نه توقف «غیرمنتظره» کل اجرا
-                last_err = err
-                if attempt < 1:
-                    time.sleep(min(delay, 2))
-                    continue
-                raise TranslationError(
-                    msg("gemini_network_error", detail=err)
-                ) from err
+            if try_next_model:
+                continue
         raise TranslationError(f"خطای API جمینای: {last_err}")
+
+    def test(self):
+        ok, message = super().test()
+        if ok and self.last_used_model != self.model:
+            message += "\n" + msg("gemini_fallback", model=self.last_used_model)
+        return ok, message
 
     def generate(self, prompt, system=None, image_png=None, json_mode=True):
         if image_png:
@@ -1526,8 +1612,16 @@ def make_engine(cfg):
     key = (cfg.get("api_key") or "").strip()
     if not key:
         raise TranslationError(msg("gemini_key_missing"))
-    return GeminiEngine(key, cfg.get("model", "gemini-3.8-flash"),
-                        cfg.get("temperature", 0.1))
+    gemini_endpoint = (cfg.get("base_url") or "").strip()
+    if gemini_endpoint.rstrip("/") == "http://localhost:11434/v1":
+        gemini_endpoint = ""
+    return GeminiEngine(
+        key,
+        cfg.get("model", "gemini-3.8-flash"),
+        cfg.get("temperature", 0.1),
+        base_url=gemini_endpoint,
+        proxy_url=cfg.get("gemini_proxy", ""),
+    )
 
 
 # --------------------------------------------------------------------------

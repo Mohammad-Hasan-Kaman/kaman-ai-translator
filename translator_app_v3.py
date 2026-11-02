@@ -297,7 +297,13 @@ STRINGS = {
         "engine_label": "موتور ترجمه:",
         "provider_gemini": "Google Gemini",
         "provider_openai": "سرور سازگار با OpenAI (لوکال/ابری)",
-        "base_label": "آدرس سرور (Base URL):",
+        "base_label": "آدرس سرور سازگار با OpenAI (Base URL):",
+        "gemini_endpoint_label": "درگاه/پراکسی Gemini (اختیاری):",
+        "gemini_endpoint_ph": "خالی = اتصال مستقیم به Google؛ یا آدرس درگاه Gemini-native",
+        "gemini_endpoint_hint": "اگر اتصال مستقیم Google از شبکهٔ شما کار نمی‌کند، آدرس یک درگاه سازگار با Gemini API را وارد کنید. متغیر HTTPS_PROXY ویندوز نیز پشتیبانی می‌شود. آدرس سرور OpenAI-compatible را اینجا وارد نکنید.",
+        "gemini_proxy_label": "آدرس پراکسی شبکه (اختیاری):",
+        "gemini_proxy_ph": "مثلاً http://127.0.0.1:7890",
+        "gemini_proxy_hint": "اگر پراکسی/VPN شما آدرس محلی دارد، اینجا وارد کنید. اگر خالی بماند، برنامه متغیر سیستم HTTPS_PROXY را استفاده می‌کند.",
         "api_label": "API Key:",
         "show_key": "نمایش",
         "model_label": "مدل:",
@@ -441,7 +447,13 @@ STRINGS = {
         "engine_label": "Translation engine:",
         "provider_gemini": "Google Gemini",
         "provider_openai": "OpenAI-compatible server (local/cloud)",
-        "base_label": "Server address (Base URL):",
+        "base_label": "OpenAI-compatible server URL (Base URL):",
+        "gemini_endpoint_label": "Gemini gateway/proxy (optional):",
+        "gemini_endpoint_ph": "Blank = direct Google connection; or enter a Gemini-native gateway URL",
+        "gemini_endpoint_hint": "If direct Google access fails on your network, enter a Gemini API-compatible gateway URL. Windows HTTPS_PROXY is also supported. Do not enter an OpenAI-compatible endpoint here.",
+        "gemini_proxy_label": "Network proxy URL (optional):",
+        "gemini_proxy_ph": "e.g. http://127.0.0.1:7890",
+        "gemini_proxy_hint": "If your proxy/VPN exposes a local address, enter it here. If blank, the app uses the system HTTPS_PROXY variable.",
         "api_label": "API Key:",
         "show_key": "Show",
         "model_label": "Model:",
@@ -825,7 +837,8 @@ class SettingsDialog(QDialog):
         row.addWidget(self.combo_provider, 1)
         layout.addLayout(row)
 
-        # --- Base URL (فقط سازگار با OpenAI) ---
+        # --- آدرس endpoint: پروفایل جدا برای OpenAI-compatible و Gemini ---
+        hint_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
         self.row_base = QHBoxLayout()
         self.lbl_base = QLabel(S("base_label"))
         self.txt_base = QLineEdit(self.cfg.get("base_url", ""))
@@ -833,6 +846,21 @@ class SettingsDialog(QDialog):
         self.row_base.addWidget(self.lbl_base)
         self.row_base.addWidget(self.txt_base, 1)
         layout.addLayout(self.row_base)
+        self.lbl_gemini_hint = QLabel(S("gemini_endpoint_hint"))
+        self.lbl_gemini_hint.setWordWrap(True)
+        self.lbl_gemini_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
+        layout.addWidget(self.lbl_gemini_hint)
+        proxy_row = QHBoxLayout()
+        self.lbl_gemini_proxy = QLabel(S("gemini_proxy_label"))
+        self.txt_gemini_proxy = QLineEdit(self.cfg.get("gemini_proxy", ""))
+        self.txt_gemini_proxy.setPlaceholderText(S("gemini_proxy_ph"))
+        proxy_row.addWidget(self.lbl_gemini_proxy)
+        proxy_row.addWidget(self.txt_gemini_proxy, 1)
+        layout.addLayout(proxy_row)
+        self.lbl_gemini_proxy_hint = QLabel(S("gemini_proxy_hint"))
+        self.lbl_gemini_proxy_hint.setWordWrap(True)
+        self.lbl_gemini_proxy_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
+        layout.addWidget(self.lbl_gemini_proxy_hint)
 
         # --- API Key ---
         self.row_api = QHBoxLayout()
@@ -1012,15 +1040,29 @@ class SettingsDialog(QDialog):
             self.cfg["api_key"] = self.txt_api.text().strip()
             self.cfg["base_url"] = self.txt_base.text().strip()
             self.cfg["model"] = self.txt_model.text().strip()
+            self.cfg["gemini_proxy"] = self.txt_gemini_proxy.text().strip()
+            if self._provider == "gemini":
+                self.cfg["gemini_endpoint_version"] = 1
+            if self._provider == "gemini":
+                self.cfg["gemini_endpoint_version"] = 1
             core.switch_provider(self.cfg, new_provider)
             self.txt_base.setText(self.cfg.get("base_url", ""))
             self.txt_api.setText(self.cfg.get("api_key", ""))
             self.txt_model.setText(self.cfg.get("model", ""))
+            self.txt_gemini_proxy.setText(self.cfg.get("gemini_proxy", ""))
             self._provider = new_provider
         is_openai = new_provider == "openai"
-        self.lbl_base.setVisible(is_openai)
-        self.txt_base.setVisible(is_openai)
+        self.lbl_base.setText(S("base_label") if is_openai else S("gemini_endpoint_label"))
+        self.txt_base.setPlaceholderText(
+            "http://localhost:11434/v1" if is_openai else S("gemini_endpoint_ph")
+        )
+        self.lbl_base.setVisible(True)
+        self.txt_base.setVisible(True)
         self.lbl_local_hint.setVisible(is_openai)
+        self.lbl_gemini_hint.setVisible(not is_openai)
+        self.lbl_gemini_proxy.setVisible(not is_openai)
+        self.txt_gemini_proxy.setVisible(not is_openai)
+        self.lbl_gemini_proxy_hint.setVisible(not is_openai)
         if is_openai:
             self.txt_api.setPlaceholderText(S("key_ph_local"))
             self.txt_model.setPlaceholderText(S("model_ph_openai"))
@@ -1034,6 +1076,11 @@ class SettingsDialog(QDialog):
         cfg["base_url"] = self.txt_base.text().strip()
         cfg["api_key"] = self.txt_api.text().strip()
         cfg["model"] = self.txt_model.text().strip()
+        cfg["gemini_proxy"] = self.txt_gemini_proxy.text().strip()
+        if cfg["provider"] == "gemini":
+            cfg["gemini_endpoint_version"] = 1
+        if cfg["provider"] == "gemini":
+            cfg["gemini_endpoint_version"] = 1
         cfg["theme"] = self.combo_theme.currentData()
         cfg["ui_lang"] = self.combo_ui_lang.currentData()
         cfg["structure_auto"] = self.chk_struct_auto.isChecked()

@@ -84,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prevent unintended Persian or dialect mixing.
 - Gemini errors now explain invalid keys, unavailable model IDs, and location
   or regional access restrictions in clear language.
+- Gemini connection settings now accept an optional Gemini-native API gateway
+  and an HTTP(S) network proxy; the Google SDK's system `HTTPS_PROXY` support
+  also works. Temporary 500/502/503/504 and transport failures receive
+  bounded exponential retries and a 90-second request timeout.
 - The Gemini default is updated to `gemini-3.8-flash`; existing settings that
   still contain the app's former `gemini-2.5-flash` default migrate automatically.
 - Gemini 3.6+ requests leave temperature at Google's recommended default, and
