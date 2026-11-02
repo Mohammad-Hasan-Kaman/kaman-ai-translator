@@ -74,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preserves the open book and current translation view.
 - `pydantic` is an explicit Gemini dependency and missing-install errors now
   explain how to install the project requirements.
+- Frozen Windows builds preload the system ICU DLLs before the first Qt import,
+  preventing unrelated ICU copies on `PATH` from breaking Qt startup.
 
 ## [3.0.0] - 2026-10-10
 

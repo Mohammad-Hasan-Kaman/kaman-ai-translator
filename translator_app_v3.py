@@ -17,8 +17,30 @@ kaman ai translator v3 — ترجمهٔ کتاب‌های PDF/EPUB با هوش �
 
 import os
 import sys
+import ctypes
 import threading
 import time
+
+# In PyInstaller one-file builds, make the bundled Qt DLL directory explicit
+# before importing any Qt extension module. Keep the handle alive for the
+# process lifetime so Windows continues searching this directory first.
+_QT_DLL_DIRECTORY_HANDLE = None
+_QT_SYSTEM_ICU_HANDLES = []
+if sys.platform == "win32" and getattr(sys, "frozen", False):
+    _qt_dll_dir = os.path.join(sys._MEIPASS, "PyQt6", "Qt6", "bin")
+    if os.path.isdir(_qt_dll_dir):
+        os.environ["PATH"] = _qt_dll_dir + os.pathsep + os.environ.get("PATH", "")
+        _QT_DLL_DIRECTORY_HANDLE = os.add_dll_directory(_qt_dll_dir)
+    # QtCore imports the Windows ICU API. Preload the OS copies by absolute
+    # path so unrelated ICU DLLs earlier on PATH cannot shadow those APIs.
+    _system_dll_dir = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
+    for _icu_name in ("icuuc.dll", "icuin.dll"):
+        _icu_path = os.path.join(_system_dll_dir, _icu_name)
+        if os.path.isfile(_icu_path):
+            try:
+                _QT_SYSTEM_ICU_HANDLES.append(ctypes.WinDLL(_icu_path))
+            except OSError:
+                pass
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,

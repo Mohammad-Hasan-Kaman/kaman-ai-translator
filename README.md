@@ -232,20 +232,21 @@ python translator_app_v3.py
 
 ## Building the Windows executable
 
-```bash
+```powershell
 pip install -r requirements.txt pyinstaller
-pyinstaller --noconfirm --clean --onefile --windowed ^
-  --icon icon.ico ^
-  --add-data "icon.png;." ^
-  --collect-data google.genai ^
-  --collect-all pydantic --collect-all pydantic_core ^
-  --name kaman-ai-translator-3.1.0 ^
+pyinstaller --noconfirm --clean --onefile --windowed `
+  --icon icon.ico `
+  --add-data "icon.png;." `
+  --collect-data google.genai `
+  --collect-all pydantic --collect-all pydantic_core `
+  --name kaman-ai-translator-3.1.0 `
   translator_app_v3.py
 ```
 
 > - `--add-data "icon.png;."` bundles the app icon **inside** the executable — without it the window/taskbar icon is missing in packaged builds.
 > - `--collect-data google.genai` includes the Gemini SDK's data files while avoiding optional local-tokenizer dependencies.
 > - `--collect-all pydantic --collect-all pydantic_core` includes Gemini's validation dependency in the executable.
+> - The frozen app registers its bundled Qt DLL directory and preloads the Windows ICU DLLs before importing PyQt6, preventing unrelated Qt/ICU installations on `PATH` from breaking startup.
 > - On Linux/macOS use `:` as the `--add-data` separator (e.g. `icon.png:.`).
 
 ---
