@@ -61,7 +61,7 @@ def get_language():
 _MSGS = {
     "fa": {
         "base_url_empty": "آدرس سرور (Base URL) خالی است.",
-        "model_empty": "نام مدل را وارد کنید (مثلاً llama3.2 یا qwen2.5:14b).",
+        "model_empty": "نام مدل را وارد کنید یا اجازه دهید برنامه مدل‌های سرور را پیدا کند.",
         "gemini_key_empty": "API key گوگل تنظیم نشده است. از دکمهٔ «تنظیمات» آن را وارد کنید.",
         "gemini_key_missing": "API key گوگل تنظیم نشده است.",
         "missing_pydantic": (
@@ -95,10 +95,18 @@ _MSGS = {
             "(در Ollama: ‏num_ctx‏ مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند."
         ),
         "test_fail": "اتصال ناموفق ❌\n{detail}",
+        "gemini_location": (
+            "دسترسی Gemini از این موقعیت یا IP پشتیبانی نمی‌شود یا توسط Google محدود شده است. "
+            "اگر از IP ایران استفاده می‌کنید، ممکن است محدودیت منطقه‌ای علت باشد. "
+            "از شبکه/منطقهٔ پشتیبانی‌شده استفاده کنید یا موتور سرور سازگار با OpenAI را انتخاب کنید."
+        ),
+        "gemini_key_error": "کلید Gemini معتبر نیست یا دسترسی Generative Language API برای آن فعال نیست. کلید و فعال بودن API را بررسی کنید.",
+        "gemini_model_error": "مدل Gemini «{model}» در دسترس این کلید نیست یا شناسهٔ آن معتبر نیست. شناسهٔ مدل را بررسی کنید یا فیلد مدل را خالی بگذارید تا مدل پیش‌فرض امتحان شود.",
+        "gemini_http_error": "اتصال Gemini با خطای دسترسی/API ({code}) رد شد. کلید، دسترسی API و محدودیت‌های منطقه‌ای/شبکه را بررسی کنید. جزئیات: {detail}",
     },
     "en": {
         "base_url_empty": "The server address (Base URL) is empty.",
-        "model_empty": "Enter a model name (e.g. llama3.2 or qwen2.5:14b).",
+        "model_empty": "Enter a model name or let the app discover one from the server.",
         "gemini_key_empty": "The Google API key is not set. Enter it from the Settings button.",
         "gemini_key_missing": "The Google API key is not set.",
         "missing_pydantic": (
@@ -132,6 +140,14 @@ _MSGS = {
             "(in Ollama: num_ctx, e.g. 16384) or replies will be cut off."
         ),
         "test_fail": "Connection failed ❌\n{detail}",
+        "gemini_location": (
+            "Gemini access is unavailable or restricted from this location/IP. "
+            "If you are connecting from Iran, a regional restriction may be the cause. "
+            "Use a supported network/region or choose an OpenAI-compatible server."
+        ),
+        "gemini_key_error": "The Gemini API key is invalid, or the Generative Language API is not enabled for it. Check the key and API access.",
+        "gemini_model_error": "Gemini model '{model}' is unavailable to this key or the model ID is invalid. Check its ID, or leave Model blank to try the default model.",
+        "gemini_http_error": "Gemini rejected the request ({code}). Check the API key, API access, and regional/network restrictions. Details: {detail}",
     },
 }
 
@@ -423,8 +439,6 @@ def validate_config(cfg):
     if provider == "openai":
         if not (cfg.get("base_url") or "").strip():
             return msg("base_url_empty")
-        if not (cfg.get("model") or "").strip():
-            return msg("model_empty")
         return None
     if not (cfg.get("api_key") or "").strip():
         return msg("gemini_key_empty")
@@ -537,6 +551,10 @@ DIRECTIONS = {
             "(like [12]) unchanged; translate only the words around them.\n"
             "- Use ONE consistent Arabic equivalent for each key term throughout the book; when a "
             "BOOK STRUCTURE CONTEXT is provided, follow it as the house style.\n"
+            "- Write exclusively in Modern Standard Arabic (الفصحى), in Arabic script. Do not leave "
+            "Persian wording in the translation, do not use colloquial dialect, and do not mix "
+            "Arabic with Persian. Preserve technical names and citations only when they should "
+            "remain unchanged. Use standard Arabic punctuation where appropriate.\n"
             "- If the text looks like table cells or figure captions, keep the cell separation and "
             "caption labels intact.\n"
             "- Keep the JSON structure perfectly clean."
@@ -600,6 +618,10 @@ DIRECTIONS = {
             "(like [12]) unchanged; translate only the words around them.\n"
             "- Use ONE consistent Arabic equivalent for each key term throughout the book; when a "
             "BOOK STRUCTURE CONTEXT is provided, follow it as the house style.\n"
+            "- Write exclusively in Modern Standard Arabic (الفصحى), in Arabic script. Do not leave "
+            "Persian wording in the translation, do not use colloquial dialect, and do not mix "
+            "Arabic with Persian. Preserve technical names and citations only when they should "
+            "remain unchanged. Use standard Arabic punctuation where appropriate.\n"
             "- Keep the JSON structure perfectly clean."
         ),
         "labels": {
@@ -1187,6 +1209,23 @@ class GeminiEngine(BaseEngine):
                 )
             except APIError as err:
                 last_err = err
+                detail = str(err)
+                folded = detail.casefold()
+                code = str(err.code)
+                if any(marker in folded for marker in (
+                    "user location is not supported", "location is not supported",
+                    "not available in your country", "unsupported location",
+                    "region is not supported", "geographic location",
+                )):
+                    raise TranslationError(msg("gemini_location")) from err
+                if code in ("401", "403") and any(marker in folded for marker in (
+                    "api key", "permission_denied", "permission denied", "unauthorized",
+                )):
+                    raise TranslationError(msg("gemini_key_error")) from err
+                if code in ("400", "404") and any(marker in folded for marker in (
+                    "model", "not found", "not supported for generatecontent",
+                )):
+                    raise TranslationError(msg("gemini_model_error", model=self.model)) from err
                 if err.code == 429 and attempt == 3:
                     raise QuotaExhaustedError(
                         "سهمیهٔ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید."
@@ -1195,6 +1234,8 @@ class GeminiEngine(BaseEngine):
                     time.sleep(delay)
                     delay *= 2
                     continue
+                if code in ("400", "401", "403", "404"):
+                    raise TranslationError(msg("gemini_http_error", code=code, detail=detail)) from err
                 raise TranslationError(f"خطای API جمینای ({err.code}): {err}") from err
             except Exception as err:  # noqa: BLE001
                 # خطای انتقال (قطع اتصال، DNS، timeout لایهٔ HTTP) — مثل بقیه
@@ -1248,10 +1289,45 @@ class OpenAICompatEngine(BaseEngine):
     provider = "openai"
 
     def __init__(self, base_url, api_key, model, temperature=0.1):
-        self.base_url = (base_url or "").rstrip("/")
+        self.base_url = (base_url or "http://localhost:11434/v1").rstrip("/")
         self.api_key = api_key or "not-needed"
         self.model = model or ""
         self.temperature = float(temperature)
+
+    def _discover_model(self):
+        """Use the server's first advertised model when the user left Model blank."""
+        if self.model:
+            return self.model
+        url = f"{self.base_url}/models"
+        req = urllib.request.Request(
+            url, headers={"Authorization": f"Bearer {self.api_key}"}, method="GET"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+            raise TranslationError(
+                f"{msg('model_not_set')}\n{msg('model_empty')}\n"
+                f"Could not list models from {url}: {exc}"
+            ) from exc
+        items = payload.get("data", []) if isinstance(payload, dict) else []
+        if not items and isinstance(payload, dict):
+            items = payload.get("models", [])
+        for item in items:
+            if isinstance(item, str) and item.strip():
+                self.model = item.strip()
+                break
+            if isinstance(item, dict):
+                candidate = item.get("id") or item.get("name")
+                if isinstance(candidate, str) and candidate.strip():
+                    self.model = candidate.strip()
+                    break
+        if not self.model:
+            raise TranslationError(
+                f"{msg('model_not_set')}\nThe server returned no model IDs at {url}. "
+                "Load/select a model on the server or enter its ID in Settings."
+            )
+        return self.model
 
     def _post(self, payload, timeout=600):
         url = f"{self.base_url}/chat/completions"
@@ -1324,8 +1400,7 @@ class OpenAICompatEngine(BaseEngine):
         return None
 
     def generate(self, prompt, system=None, image_png=None, json_mode=True):
-        if not self.model:
-            raise TranslationError(msg("model_not_set"))
+        self._discover_model()
 
         if image_png:
             content = [

@@ -76,6 +76,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explain how to install the project requirements.
 - Frozen Windows builds preload the system ICU DLLs before the first Qt import,
   preventing unrelated ICU copies on `PATH` from breaking Qt startup.
+- A fresh installation starts in Persian and follows the Windows system theme;
+  light mode now paints the complete Settings content and scroll viewport.
+- Leaving the model field blank on an OpenAI-compatible server now discovers
+  its first advertised model through `/models`. Gemini keeps its default model.
+- Arabic translation prompts now explicitly require Modern Standard Arabic and
+  prevent unintended Persian or dialect mixing.
+- Gemini errors now explain invalid keys, unavailable model IDs, and location
+  or regional access restrictions in clear language.
 
 ## [3.0.0] - 2026-10-10
 

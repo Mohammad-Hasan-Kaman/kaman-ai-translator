@@ -95,6 +95,9 @@ DARK_STYLESHEET = """
     QMenu { background-color: #1e293b; color: #f1f5f9; border: 1px solid #334155; }
     QMenu::item:selected { background-color: #2563eb; }
     QMessageBox { background-color: #1e293b; }
+    QDialog#settingsDialog { background-color: #0f172a; color: #f1f5f9; }
+    QWidget#settingsContent { background-color: #0f172a; color: #f1f5f9; }
+    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #0f172a; }
 """
 
 LIGHT_STYLESHEET = """
@@ -127,6 +130,9 @@ LIGHT_STYLESHEET = """
     QMenu { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
     QMenu::item:selected { background-color: #2563eb; color: white; }
     QMessageBox { background-color: #ffffff; }
+    QDialog#settingsDialog { background-color: #f8fafc; color: #0f172a; }
+    QWidget#settingsContent { background-color: #f8fafc; color: #0f172a; }
+    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #f8fafc; }
 """
 
 
@@ -139,7 +145,24 @@ def system_scheme_is_dark():
             return False
     except Exception:
         pass
-    return True
+    if sys.platform == "win32":
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+            )
+            use_light, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return not bool(use_light)
+        except (OSError, ImportError):
+            pass
+    app = QApplication.instance()
+    if app is not None:
+        try:
+            return app.palette().color(app.palette().ColorRole.Window).lightness() < 128
+        except Exception:
+            pass
+    return False
 
 
 def effective_theme(cfg):
@@ -279,7 +302,7 @@ STRINGS = {
         "model_label": "مدل:",
         "key_ph_gemini": "کلید Google AI Studio",
         "key_ph_local": "کلید (برای سرور لوکال معمولاً دلخواه است)",
-        "model_ph_openai": "مثلاً llama3.2 یا qwen2.5:14b",
+        "model_ph_openai": "خالی بگذارید تا برنامه از سرور مدل پیدا کند؛ مثلاً qwen2.5:14b",
         "model_ph_gemini": "gemini-2.5-flash",
         "encrypt_note": "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:",
         "open_folder": "📂 باز کردن پوشه",
@@ -422,7 +445,7 @@ STRINGS = {
         "model_label": "Model:",
         "key_ph_gemini": "Google AI Studio key",
         "key_ph_local": "Key (for local servers, usually arbitrary)",
-        "model_ph_openai": "e.g. llama3.2 or qwen2.5:14b",
+        "model_ph_openai": "Leave blank to discover a server model; e.g. qwen2.5:14b",
         "model_ph_gemini": "gemini-2.5-flash",
         "encrypt_note": "🔒 The API key is stored encrypted (Windows DPAPI). Your settings and translations live only in this folder on your computer:",
         "open_folder": "📂 Open folder",
@@ -759,6 +782,7 @@ class SettingsDialog(QDialog):
 
     def __init__(self, cfg, parent=None, job=None):
         super().__init__(parent)
+        self.setObjectName("settingsDialog")
         self.setWindowTitle(S("settings"))
         self.setMinimumWidth(560)
         self.cfg = core.switch_provider(
@@ -779,6 +803,8 @@ class SettingsDialog(QDialog):
 
         outer = QVBoxLayout(self)
         content = QWidget()
+        content.setObjectName("settingsContent")
+        content.setAutoFillBackground(True)
         layout = QVBoxLayout(content)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(12)
@@ -943,6 +969,7 @@ class SettingsDialog(QDialog):
 
         # --- مونتاژ نهایی: محتوای اسکرول‌دار + وضعیت و دکمه‌های ثابت ---
         scroll = QScrollArea()
+        scroll.setObjectName("settingsScroll")
         scroll.setWidgetResizable(True)
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)

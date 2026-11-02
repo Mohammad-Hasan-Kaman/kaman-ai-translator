@@ -112,7 +112,7 @@ The translator also works fully offline against a local OpenAI-compatible server
 | Engine | OpenAI-compatible | OpenAI-compatible |
 | Base URL | `http://localhost:11434/v1` | `http://localhost:1234/v1` |
 | API Key | `ollama` (placeholder) | `lm-studio` (placeholder) |
-| Model | A model you pulled, e.g. `llama3.1` | The loaded model's id |
+| Model | A model you pulled, e.g. `llama3.1`; leave blank to discover the first model advertised by the server | The loaded model's id; leave blank to discover the first model advertised by the server |
 
 - **LM Studio:** load a model, then start the server from the **Developer** tab before connecting.
 - **The API key is a placeholder for these two servers.** By default, Ollama and LM Studio do not authenticate local requests, so the key is never checked — it only has to be non-empty, because the OpenAI client requires one.
@@ -199,7 +199,7 @@ python translator_app_v3.py
 
 ## Quick start
 
-1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, set the model name, press **Test connection**.
+1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, optionally set the model name (blank uses Gemini's default or discovers a server model), then press **Test connection**.
 2. **📂 Open book (PDF / EPUB)** → open your book.
 3. **Single page:** *Translate this page* · **Whole book:** *Translate the whole book* and in the dialog:
    - choose the page range,
@@ -218,12 +218,16 @@ python translator_app_v3.py
 |---|---|
 | Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
 | Base URL | Endpoint of an OpenAI-compatible server (ignored for Gemini). |
-| Model | Model name, e.g. `gemini-2.5-flash` or a local model id. |
+| Model | Model name, e.g. `gemini-2.5-flash` or a local model id. Leave blank for Gemini's default or automatic discovery from an OpenAI-compatible server. |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
 | App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |
 | Theme | System / Dark / Light. |
 | Auto-analyze structure on file open | Free, fully local detection of headings & recurring labels of the opened book. |
 | AI deep structure pass | One extra API request that reads the table of contents and extracts headings, labels and a summary. |
+
+A fresh installation defaults to Persian and follows the Windows system theme.
+When Qt cannot report the Windows color scheme, the app checks the Windows
+app-theme setting and then falls back to the system palette.
 | Show Template editor | Two text areas (headings / recurring labels — one item per line) saved **per open book**; steers term consistency in every prompt. |
 | Chunk size / context tail | Advanced parameters of the translation pipeline. |
 | Request delay | Pause between API calls (0–30 s). |

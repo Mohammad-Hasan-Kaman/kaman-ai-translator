@@ -140,8 +140,8 @@ check("gemini with key -> ok",
 check("openai without base_url -> error",
       k.validate_config({**k.CONFIG_DEFAULTS, "provider": "openai", "base_url": "",
                          "model": "m"}))
-check("openai without model -> error",
-      k.validate_config({**k.CONFIG_DEFAULTS, "provider": "openai", "model": ""}))
+check("openai without model -> discover from server",
+      k.validate_config({**k.CONFIG_DEFAULTS, "provider": "openai", "model": ""}) is None)
 check("openai complete -> ok",
       k.validate_config({**k.CONFIG_DEFAULTS, "provider": "openai", "model": "llama3.2"})
       is None)
@@ -342,6 +342,14 @@ class MockHandler(BaseHTTPRequestHandler):
     received = []
     reject_rf = False   # شبیه‌سازی سروری که response_format را پشتیبانی نمی‌کند
 
+    def do_GET(self):
+        body = json.dumps({"data": [{"id": "auto-discovered-model"}]}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(n))
@@ -398,11 +406,10 @@ content = MockHandler.received[-1][1]["messages"][-1]["content"]
 check("image sent as data url",
       isinstance(content, list) and content[1]["image_url"]["url"].startswith("data:image/png;base64,"))
 
-try:
-    k.OpenAICompatEngine(f"http://127.0.0.1:{port}/v1", "k", "").generate("x")
-    check("empty model raises", False)
-except k.TranslationError:
-    check("empty model raises", True)
+auto_engine = k.OpenAICompatEngine(f"http://127.0.0.1:{port}/v1", "k", "")
+auto_engine.generate("x")
+check("empty model discovers first server model",
+      auto_engine.model == "auto-discovered-model")
 
 server.shutdown()
 try:
