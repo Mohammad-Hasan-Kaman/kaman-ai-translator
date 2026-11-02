@@ -113,7 +113,7 @@ Long operations (translation, structure analysis, exports) always run in a worke
 Include:
 
 - OS and Python version (or the exact executable version),
-- engine/provider and model (e.g. Gemini `gemini-2.5-flash`, or “OpenAI-compatible local server”),
+- engine/provider and model (e.g. Gemini `gemini-3.8-flash`, or “OpenAI-compatible local server”),
 - a **minimal PDF/EPUB sample** that reproduces extraction problems (sanitized, no personal content),
 - steps to reproduce and the exact error text from the status bar.
 

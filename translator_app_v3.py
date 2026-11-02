@@ -228,6 +228,7 @@ STRINGS = {
         "reviewed": "✓ بازبینی شد (تأیید انسانی)",
         "reviewed_tip": "✓ وقتی ترجمهٔ این صفحه را خودتان خواندید و تأیید کردید تیک بزنید.\nدر آمار (بازبینی‌شده) و خروجی نهایی کتاب لحاظ می‌شود.",
         "ready": "آماده",
+        "legacy_job_archived": "{n} ترجمهٔ ذخیره‌شده از نسخهٔ قدیمی زبان مقصد مشخصی نداشت؛ برای جلوگیری از نمایش ترجمه با زبان اشتباه، نگه‌داری شد اما برای این زبان دوباره ترجمه می‌شود.",
         "pause": "⏸ توقف",
         "resume_btn": "▶ ادامه",
         "cancel_btn": "■ لغو",
@@ -303,7 +304,7 @@ STRINGS = {
         "key_ph_gemini": "کلید Google AI Studio",
         "key_ph_local": "کلید (برای سرور لوکال معمولاً دلخواه است)",
         "model_ph_openai": "خالی بگذارید تا برنامه از سرور مدل پیدا کند؛ مثلاً qwen2.5:14b",
-        "model_ph_gemini": "gemini-2.5-flash",
+        "model_ph_gemini": "gemini-3.8-flash",
         "encrypt_note": "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:",
         "open_folder": "📂 باز کردن پوشه",
         "open_folder_tip": "پوشهٔ ذخیرهٔ تنظیمات، کلید رمزنگاری‌شده و ترجمه‌های شما را در ویندوز باز می‌کند.",
@@ -371,6 +372,7 @@ STRINGS = {
         "reviewed": "✓ Reviewed (human-approved)",
         "reviewed_tip": "✓ Tick this once you have read and approved this page's translation yourself.\nIt counts in the stats (reviewed) and in the final book output.",
         "ready": "Ready",
+        "legacy_job_archived": "{n} saved page translations from an older version had no target-language metadata. They were preserved, but this language will be translated again to prevent mixing languages.",
         "pause": "⏸ Pause",
         "resume_btn": "▶ Resume",
         "cancel_btn": "■ Cancel",
@@ -446,7 +448,7 @@ STRINGS = {
         "key_ph_gemini": "Google AI Studio key",
         "key_ph_local": "Key (for local servers, usually arbitrary)",
         "model_ph_openai": "Leave blank to discover a server model; e.g. qwen2.5:14b",
-        "model_ph_gemini": "gemini-2.5-flash",
+        "model_ph_gemini": "gemini-3.8-flash",
         "encrypt_note": "🔒 The API key is stored encrypted (Windows DPAPI). Your settings and translations live only in this folder on your computer:",
         "open_folder": "📂 Open folder",
         "open_folder_tip": "Opens the folder holding your settings, encrypted key and translations in Windows Explorer.",
@@ -654,6 +656,7 @@ class BatchWorker(QThread):
         self.cfg = dict(cfg)
         self.cfg["request_delay_sec"] = float(delay or 0)  # تاخیر بین تکه‌ها هم اعمال شود
         self.job = job
+        self.job.switch_direction(direction)
         self.start_page = start      # 0-based شامل
         self.end_page = end          # 0-based شامل
         self.direction = direction
@@ -1707,6 +1710,11 @@ class ModernTranslatorApp(QMainWindow):
         if self.cfg.get("direction") != direction:
             self.cfg["direction"] = direction
             save_config(self.cfg)
+        if self.job is not None:
+            self.job.switch_direction(direction)
+            self.update_stats()
+            if self.doc:
+                self.refresh_current_page()
         self.apply_output_direction()
 
     def apply_output_direction(self):
@@ -1759,6 +1767,7 @@ class ModernTranslatorApp(QMainWindow):
         self.total_pages = len(self.doc)
         self.current_page = 0
         self.job = JobStore(file_path).load()
+        self.job.switch_direction(self.cfg.get("direction", "en2fa"))
         self.structure = self.job.structure
         self.view_source = False
 
@@ -1767,8 +1776,13 @@ class ModernTranslatorApp(QMainWindow):
         self.update_stats()
         self.refresh_current_page()
 
+        legacy_done = len(self.job.data.get("legacy_translations", {}))
         done = self.job.count()
-        if done:
+        if legacy_done:
+            self.lbl_status.setText(
+                S("legacy_job_archived", n=num(legacy_done))
+            )
+        elif done:
             self.lbl_status.setText(S("resume_hint", n=num(done)))
         else:
             self.lbl_status.setText(S("ready"))

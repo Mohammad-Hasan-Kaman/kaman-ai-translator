@@ -297,6 +297,7 @@ check("qc failure keeps original", safe == "ترجمه")
 
 print("== H. JobStore (Resume و ذخیرهٔ خروجی صفحات) ==")
 job = k.JobStore(pdf1)
+job.switch_direction("en2fa")
 job.set(0, "الف"); job.set(2, "ج")
 job.set_reviewed(0, True)
 job.context_tail = "دنباله"
@@ -506,7 +507,7 @@ dlg.saved.connect(win.on_settings_saved)
 dlg.combo_provider.setCurrentIndex(1)
 check("openai clears model field", dlg.txt_model.text() == "")
 dlg.combo_provider.setCurrentIndex(0)
-check("gemini restores model default", dlg.txt_model.text() == "gemini-2.5-flash")
+check("gemini restores model default", dlg.txt_model.text() == "gemini-3.8-flash")
 dlg.txt_api.setText("UI-KEY-999")
 dlg.combo_theme.setCurrentIndex(1)  # light? index1=dark
 dlg.combo_theme.setCurrentIndex(2)  # light

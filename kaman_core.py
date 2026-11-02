@@ -103,6 +103,9 @@ _MSGS = {
         "gemini_key_error": "کلید Gemini معتبر نیست یا دسترسی Generative Language API برای آن فعال نیست. کلید و فعال بودن API را بررسی کنید.",
         "gemini_model_error": "مدل Gemini «{model}» در دسترس این کلید نیست یا شناسهٔ آن معتبر نیست. شناسهٔ مدل را بررسی کنید یا فیلد مدل را خالی بگذارید تا مدل پیش‌فرض امتحان شود.",
         "gemini_http_error": "اتصال Gemini با خطای دسترسی/API ({code}) رد شد. کلید، دسترسی API و محدودیت‌های منطقه‌ای/شبکه را بررسی کنید. جزئیات: {detail}",
+        "gemini_blocked": "Google پاسخ Gemini را به‌دلیل فیلتر ایمنی رد کرد ({reason}). متن مبدأ را بررسی کنید یا از مدلی/سرویسی استفاده کنید که این محتوای کتاب را می‌پذیرد.",
+        "gemini_network_error": "ارتباط با Google Gemini برقرار نشد یا بیش از حد طول کشید. اینترنت، پراکسی/فایروال و دسترسی منطقه‌ای را بررسی کنید. اگر از IP ایران استفاده می‌کنید، ممکن است محدودیت دسترسی Google دخیل باشد. جزئیات: {detail}",
+        "legacy_job_archived": "{n} ترجمهٔ ذخیره‌شده از نسخهٔ قدیمی زبان مقصد مشخصی نداشت؛ برای جلوگیری از نمایش ترجمه با زبان اشتباه، نگه‌داری شد اما برای این زبان دوباره ترجمه می‌شود.",
     },
     "en": {
         "base_url_empty": "The server address (Base URL) is empty.",
@@ -148,6 +151,9 @@ _MSGS = {
         "gemini_key_error": "The Gemini API key is invalid, or the Generative Language API is not enabled for it. Check the key and API access.",
         "gemini_model_error": "Gemini model '{model}' is unavailable to this key or the model ID is invalid. Check its ID, or leave Model blank to try the default model.",
         "gemini_http_error": "Gemini rejected the request ({code}). Check the API key, API access, and regional/network restrictions. Details: {detail}",
+        "gemini_blocked": "Google blocked the Gemini response with a safety filter ({reason}). Review the source passage or use a model/service that permits this book content.",
+        "gemini_network_error": "Could not reach Google Gemini before the request timed out. Check your internet connection, proxy/firewall, and regional availability. If you are using an Iran IP, Google access restrictions may be involved. Details: {detail}",
+        "legacy_job_archived": "{n} saved page translations from an older version had no target-language metadata. They were preserved, but this language will be translated again to prevent mixing languages.",
     },
 }
 
@@ -166,7 +172,7 @@ CONFIG_DEFAULTS = {
     "api_key": "",
     "provider": "gemini",                 # gemini | openai
     "base_url": "http://localhost:11434/v1",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-3.8-flash",
     "direction": "en2fa",                 # en2fa | fa2en | en2ar | ar2en | fa2ar | ar2fa
     "ui_lang": "fa",                      # fa | en — زبان رابط کاربری
     "profiles": {},                       # حافظهٔ جدا برای هر موتور (در load_config ساخته می‌شود)
@@ -304,7 +310,7 @@ def jobs_dir():
 def default_profiles():
     """حافظهٔ پیش‌فرض هر موتور: کلید، آدرس سرور و مدلِ مخصوص خودش."""
     return {
-        "gemini": {"api_key": "", "base_url": "", "model": "gemini-2.5-flash"},
+        "gemini": {"api_key": "", "base_url": "", "model": "gemini-3.8-flash"},
         "openai": {
             "api_key": "",
             "base_url": "http://localhost:11434/v1",
@@ -357,6 +363,15 @@ def _ensure_profiles(cfg, stored_profiles=None):
                 for key in ("api_key", "base_url", "model"):
                     if key in slot:
                         profiles[name][key] = slot[key]
+    # Gemini 2.5 Flash is now restricted for new API users. Migrate the old
+    # shipped default (including blank values) to Google's current stable Flash.
+    gemini = profiles["gemini"]
+    if gemini.get("model") in (None, "", "gemini-2.5-flash"):
+        gemini["model"] = "gemini-3.8-flash"
+    if cfg.get("provider", "gemini") == "gemini" and cfg.get("model") in (
+        None, "", "gemini-2.5-flash"
+    ):
+        cfg["model"] = "gemini-3.8-flash"
     cfg["profiles"] = profiles
     _sync_active_profile(cfg)
     return cfg
@@ -1185,20 +1200,32 @@ class GeminiEngine(BaseEngine):
                 raise TranslationError(msg("missing_pydantic")) from exc
             raise
 
-        self.client = genai.Client(api_key=api_key)
-        self.model = model or "gemini-2.5-flash"
+        from google.genai import types
+
+        self.client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=30_000),
+        )
+        self.model = model or "gemini-3.8-flash"
         self.temperature = float(temperature)
 
-    def _call(self, contents, system, json_mode):
+    def _generation_config(self, system, json_mode):
         from google.genai import types
-        from google.genai.errors import APIError
 
-        cfg_kwargs = {"temperature": self.temperature}
+        cfg_kwargs = {}
+        # Gemini 3.6+ ignores or may reject custom sampling parameters; Google
+        # recommends leaving temperature at the model default.
+        if not self.model.startswith(("gemini-3", "gemini-4")):
+            cfg_kwargs["temperature"] = self.temperature
         if system:
             cfg_kwargs["system_instruction"] = system
         if json_mode:
             cfg_kwargs["response_mime_type"] = "application/json"
-        config = types.GenerateContentConfig(**cfg_kwargs)
+        return types.GenerateContentConfig(**cfg_kwargs)
+
+    def _call(self, contents, system, json_mode):
+        from google.genai.errors import APIError
+        config = self._generation_config(system, json_mode)
 
         delay = 4
         last_err = None
@@ -1230,6 +1257,13 @@ class GeminiEngine(BaseEngine):
                     raise QuotaExhaustedError(
                         "سهمیهٔ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید."
                     ) from err
+                if err.code == 504:
+                    if attempt < 1:
+                        time.sleep(2)
+                        continue
+                    raise TranslationError(
+                        msg("gemini_network_error", detail=f"Google returned 504 DEADLINE_EXCEEDED: {err}")
+                    ) from err
                 if err.code in (429, 503) and attempt < 3:
                     time.sleep(delay)
                     delay *= 2
@@ -1241,11 +1275,12 @@ class GeminiEngine(BaseEngine):
                 # خطای انتقال (قطع اتصال، DNS، timeout لایهٔ HTTP) — مثل بقیه
                 # خطاهای موقت تلاش مجدد می‌شود، نه توقف «غیرمنتظره» کل اجرا
                 last_err = err
-                if attempt < 3:
-                    time.sleep(delay)
-                    delay *= 2
+                if attempt < 1:
+                    time.sleep(min(delay, 2))
                     continue
-                raise TranslationError(f"خطای اتصال جمینای: {err}") from err
+                raise TranslationError(
+                    msg("gemini_network_error", detail=err)
+                ) from err
         raise TranslationError(f"خطای API جمینای: {last_err}")
 
     def generate(self, prompt, system=None, image_png=None, json_mode=True):
@@ -1276,8 +1311,13 @@ class GeminiEngine(BaseEngine):
                     "مدل به دلیل گارد کپی‌رایت (finish_reason=RECITATION) پاسخی برنگرداند. "
                     "این بخش برای بازبینی دستی علامت‌گذاری شد."
                 )
-        if not raw and "MAX_TOKENS" in (finish_reason_name(response) or ""):
+        finish = (finish_reason_name(response) or "").upper()
+        if "MAX_TOKENS" in finish:
             raise TranslationError(msg("truncated_error"))
+        if not raw and any(reason in finish for reason in (
+            "SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII"
+        )):
+            raise TranslationError(msg("gemini_blocked", reason=finish))
         if not raw:
             raise TranslationError("پاسخی از سرور جمینای دریافت نشد.")
         return raw
@@ -1486,7 +1526,7 @@ def make_engine(cfg):
     key = (cfg.get("api_key") or "").strip()
     if not key:
         raise TranslationError(msg("gemini_key_missing"))
-    return GeminiEngine(key, cfg.get("model", "gemini-2.5-flash"),
+    return GeminiEngine(key, cfg.get("model", "gemini-3.8-flash"),
                         cfg.get("temperature", 0.1))
 
 
@@ -1622,6 +1662,23 @@ def extract_page_text(page_obj):
 # لولهٔ ترجمهٔ یک صفحه (مشترک بین تک‌صفحه و کل کتاب)
 # --------------------------------------------------------------------------
 
+def _page_has_embedded_images(page_obj):
+    """Detect images in PDFs and EPUB XHTML pages rendered as image blocks."""
+    try:
+        if page_obj.get_images(full=True):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        blocks = page_obj.get_text("dict").get("blocks", [])
+        return any(
+            block.get("type") == 1 and block.get("image")
+            for block in blocks if isinstance(block, dict)
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def translate_page(engine, page_obj, cfg, direction, context_tail="",
                    structure_block=None, on_progress=None, on_partial=None,
                    should_continue=None):
@@ -1640,10 +1697,7 @@ def translate_page(engine, page_obj, cfg, direction, context_tail="",
     if not source:
         # صفحه‌ای که فقط هدر/شماره داشته و بعد از پاک‌سازی خالی شده اسکن‌شده
         # نیست: درخواست تصویری نفرست (هزینه + خروجی توهمی روی صفحهٔ خالی)
-        try:
-            has_image = bool(page_obj.get_images())
-        except Exception:  # noqa: BLE001
-            has_image = True
+        has_image = _page_has_embedded_images(page_obj)
         if not has_image:
             if on_progress:
                 on_progress(1, 1)
@@ -1730,11 +1784,16 @@ class JobStore:
         self.path = os.path.join(jobs_dir(), f"{digest}.json")
         self._fingerprint = self._file_fingerprint()
         self._lock = threading.Lock()
+        self.direction = None
         self.data = {
             "source": self.source_path,
             "fingerprint": self._fingerprint,
             "translations": {},
             "reviewed": {},
+            "translations_by_direction": {},
+            "reviewed_by_direction": {},
+            "context_by_direction": {},
+            "legacy_translations": {},
             "structure": None,
             "context_tail": "",
             "updated": 0,
@@ -1781,12 +1840,61 @@ class JobStore:
                         str(k): True for k, v in stored["reviewed"].items() if v
                     }
                 self.data.update(stored)
+                self.direction = stored.get("direction")
+                for key in (
+                    "translations_by_direction", "reviewed_by_direction",
+                    "context_by_direction",
+                ):
+                    if not isinstance(self.data.get(key), dict):
+                        self.data[key] = {}
         except (OSError, ValueError):
             pass
         return self
 
+    def switch_direction(self, direction):
+        """Keep page results and rolling context isolated by target direction.
+
+        Jobs created before direction metadata existed are archived as legacy
+        results and never reused under an assumed language.
+        """
+        direction = str(direction or "")
+        if not direction or direction == self.direction:
+            return False
+        translations_by = self.data.setdefault("translations_by_direction", {})
+        reviewed_by = self.data.setdefault("reviewed_by_direction", {})
+        context_by = self.data.setdefault("context_by_direction", {})
+
+        if self.direction:
+            translations_by[self.direction] = dict(self.data.get("translations", {}))
+            reviewed_by[self.direction] = dict(self.data.get("reviewed", {}))
+            context_by[self.direction] = self.data.get("context_tail", "") or ""
+        elif self.data.get("translations"):
+            # Pre-fix job files don't record a direction; retaining these in an
+            # archive avoids silently displaying an Arabic page as Persian.
+            legacy = self.data.setdefault("legacy_translations", {})
+            legacy.update(self.data["translations"])
+
+        self.direction = direction
+        self.data["direction"] = direction
+        self.data["translations"] = dict(translations_by.get(direction, {}))
+        self.data["reviewed"] = dict(reviewed_by.get(direction, {}))
+        self.data["context_tail"] = context_by.get(direction, "") or ""
+        self.save()
+        return True
+
     def save(self):
         with self._lock:
+            if self.direction:
+                self.data["direction"] = self.direction
+                self.data.setdefault("translations_by_direction", {})[
+                    self.direction
+                ] = dict(self.data.get("translations", {}))
+                self.data.setdefault("reviewed_by_direction", {})[
+                    self.direction
+                ] = dict(self.data.get("reviewed", {}))
+                self.data.setdefault("context_by_direction", {})[
+                    self.direction
+                ] = self.data.get("context_tail", "") or ""
             self.data["updated"] = int(time.time())
             if self._fingerprint:
                 self.data["fingerprint"] = self._fingerprint

@@ -218,7 +218,7 @@ python translator_app_v3.py
 |---|---|
 | Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
 | Base URL | Endpoint of an OpenAI-compatible server (ignored for Gemini). |
-| Model | Model name, e.g. `gemini-2.5-flash` or a local model id. Leave blank for Gemini's default or automatic discovery from an OpenAI-compatible server. |
+| Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default or automatic discovery from an OpenAI-compatible server. |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
 | App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |
 | Theme | System / Dark / Light. |
@@ -228,6 +228,10 @@ python translator_app_v3.py
 A fresh installation defaults to Persian and follows the Windows system theme.
 When Qt cannot report the Windows color scheme, the app checks the Windows
 app-theme setting and then falls back to the system palette.
+
+Saved translations are kept separately for each source/target language pair.
+Older job files without direction metadata are preserved, then translated again
+under the selected direction so an Arabic page cannot appear in a Persian book.
 | Show Template editor | Two text areas (headings / recurring labels — one item per line) saved **per open book**; steers term consistency in every prompt. |
 | Chunk size / context tail | Advanced parameters of the translation pipeline. |
 | Request delay | Pause between API calls (0–30 s). |

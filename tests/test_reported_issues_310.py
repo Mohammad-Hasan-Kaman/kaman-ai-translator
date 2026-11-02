@@ -96,6 +96,70 @@ class ReportedIssueTests(unittest.TestCase):
 
         self.assertIn("pip install -r requirements.txt", str(caught.exception))
 
+    def test_saved_pages_are_isolated_by_translation_direction(self):
+        with tempfile.TemporaryDirectory(dir=_TEST_HOME) as folder:
+            source = os.path.join(folder, "book.epub")
+            with open(source, "wb") as fh:
+                fh.write(b"source")
+            job = core.JobStore(source).load()
+            job.switch_direction("en2ar")
+            job.set(0, "ترجمة عربية")
+            job.context_tail = "سياق عربي"
+            job.save()
+
+            job.switch_direction("en2fa")
+            self.assertIsNone(job.get(0))
+            self.assertEqual(job.context_tail, "")
+            job.set(0, "ترجمهٔ فارسی")
+            job.context_tail = "بافت فارسی"
+            job.save()
+
+            job.switch_direction("en2ar")
+            self.assertEqual(job.get(0), "ترجمة عربية")
+            self.assertEqual(job.context_tail, "سياق عربي")
+            reloaded = core.JobStore(source).load()
+            reloaded.switch_direction("en2fa")
+            self.assertEqual(reloaded.get(0), "ترجمهٔ فارسی")
+
+    def test_legacy_job_without_direction_is_not_reused(self):
+        with tempfile.TemporaryDirectory(dir=_TEST_HOME) as folder:
+            source = os.path.join(folder, "legacy.pdf")
+            with open(source, "wb") as fh:
+                fh.write(b"source")
+            job = core.JobStore(source)
+            job.data["translations"] = {"0": "possibly Arabic"}
+            job.save()
+            # Emulate an old job by removing direction metadata and the maps.
+            import json
+            with open(job.path, "r", encoding="utf-8") as fh:
+                stored = json.load(fh)
+            stored.pop("direction", None)
+            stored.pop("translations_by_direction", None)
+            stored.pop("reviewed_by_direction", None)
+            stored.pop("context_by_direction", None)
+            with open(job.path, "w", encoding="utf-8") as fh:
+                json.dump(stored, fh)
+
+            migrated = core.JobStore(source).load()
+            migrated.switch_direction("en2fa")
+            self.assertIsNone(migrated.get(0))
+            self.assertEqual(
+                migrated.data["legacy_translations"], {"0": "possibly Arabic"}
+            )
+
+    def test_gemini_3_uses_model_default_temperature(self):
+        engine = core.GeminiEngine("test-key", "gemini-3.8-flash", temperature=0.1)
+        config = engine._generation_config("translate", json_mode=True)
+        self.assertIsNone(config.temperature)
+        self.assertEqual(config.response_mime_type, "application/json")
+
+    def test_legacy_gemini_default_migrates_to_current_stable(self):
+        cfg = dict(core.CONFIG_DEFAULTS, provider="gemini", model="gemini-2.5-flash")
+        core._ensure_profiles(cfg, {
+            "gemini": {"api_key": "", "base_url": "", "model": "gemini-2.5-flash"}
+        })
+        self.assertEqual(cfg["model"], "gemini-3.8-flash")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

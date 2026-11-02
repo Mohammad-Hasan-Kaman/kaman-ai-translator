@@ -84,6 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prevent unintended Persian or dialect mixing.
 - Gemini errors now explain invalid keys, unavailable model IDs, and location
   or regional access restrictions in clear language.
+- The Gemini default is updated to `gemini-3.8-flash`; existing settings that
+  still contain the app's former `gemini-2.5-flash` default migrate automatically.
+- Gemini 3.6+ requests leave temperature at Google's recommended default, and
+  partial `MAX_TOKENS` responses are rejected as truncated instead of saved.
+- Book translations and context tails are now stored per language direction.
+  Old jobs without language metadata are preserved and retranslated safely.
+- EPUB cover images embedded as XHTML image blocks are now detected and sent
+  through scanned-page translation instead of being silently skipped.
 
 ## [3.0.0] - 2026-10-10
 
