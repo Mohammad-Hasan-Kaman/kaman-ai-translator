@@ -1941,15 +1941,54 @@ class JobStore:
                 ):
                     if not isinstance(self.data.get(key), dict):
                         self.data[key] = {}
+                self._repair_buried_legacy()
         except (OSError, ValueError):
             pass
         return self
 
+    def _repair_buried_legacy(self):
+        """بازگردانی ترجمه‌هایی که نسخهٔ جهت‌آگاهِ اول به «legacy» تبعید کرد.
+
+        آن نسخه هنگام اولین باز کردنِ کارهای قدیمی (بدون فرادادهٔ جهت) همهٔ
+        صفحات ترجمه‌شده را داخل legacy_translations بایگانی می‌کرد و کار را
+        خالی نشان می‌داد — کاربر عملاً پیشرفت آماده‌اش را از دست‌رفته می‌دید.
+        اگر آن صفحات تنها محتوای کارند (هیچ ترجمه‌ای برای هیچ جهتی وجود
+        ندارد)، متعلق به همین کار و همان جهتِ ثبت‌شده‌اند: سر جایشان
+        برمی‌گردند و نتیجه روی دیسک هم ذخیره می‌شود.
+        """
+        legacy = self.data.get("legacy_translations")
+        if not isinstance(legacy, dict) or not legacy:
+            return
+        by_dir = self.data.get("translations_by_direction", {})
+        has_any = bool(self.data.get("translations")) or any(
+            isinstance(slot, dict) and slot for slot in by_dir.values()
+        )
+        if has_any:
+            return
+        restored = {
+            str(k): v for k, v in legacy.items() if isinstance(v, str)
+        }
+        if not restored:
+            return
+        self.data["translations"] = restored
+        if self.direction:
+            by_dir[self.direction] = dict(restored)
+        self.data["legacy_translations"] = {}
+        try:
+            self.save()
+        except OSError:
+            pass
+
     def switch_direction(self, direction):
         """Keep page results and rolling context isolated by target direction.
 
-        Jobs created before direction metadata existed are archived as legacy
-        results and never reused under an assumed language.
+        Jobs created before direction metadata existed kept a single
+        translations dict — exactly the set the user saw, reviewed and
+        exported in those releases. On the first direction-aware open those
+        pages are ADOPTED under the direction the job is opened with (the
+        semantics every previous release had), never hidden in an
+        unreachable archive: burying them made finished books reopen at
+        zero progress, like a brand-new app.
         """
         direction = str(direction or "")
         if not direction or direction == self.direction:
@@ -1963,10 +2002,11 @@ class JobStore:
             reviewed_by[self.direction] = dict(self.data.get("reviewed", {}))
             context_by[self.direction] = self.data.get("context_tail", "") or ""
         elif self.data.get("translations"):
-            # Pre-fix job files don't record a direction; retaining these in an
-            # archive avoids silently displaying an Arabic page as Persian.
-            legacy = self.data.setdefault("legacy_translations", {})
-            legacy.update(self.data["translations"])
+            # Legacy single-dict job: adopt its pages under the direction it
+            # is opened with, so the user's finished work stays visible.
+            translations_by[direction] = dict(self.data.get("translations", {}))
+            reviewed_by[direction] = dict(self.data.get("reviewed", {}))
+            context_by[direction] = self.data.get("context_tail", "") or ""
 
         self.direction = direction
         self.data["direction"] = direction

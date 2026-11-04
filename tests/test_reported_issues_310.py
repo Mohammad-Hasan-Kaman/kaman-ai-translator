@@ -122,7 +122,7 @@ class ReportedIssueTests(unittest.TestCase):
             reloaded.switch_direction("en2fa")
             self.assertEqual(reloaded.get(0), "ترجمهٔ فارسی")
 
-    def test_legacy_job_without_direction_is_not_reused(self):
+    def test_legacy_job_without_direction_is_adopted(self):
         with tempfile.TemporaryDirectory(dir=_TEST_HOME) as folder:
             source = os.path.join(folder, "legacy.pdf")
             with open(source, "wb") as fh:
@@ -143,9 +143,32 @@ class ReportedIssueTests(unittest.TestCase):
 
             migrated = core.JobStore(source).load()
             migrated.switch_direction("en2fa")
-            self.assertIsNone(migrated.get(0))
+            # Legacy single-dict jobs are adopted under the direction they
+            # are opened with — the user's finished pages must stay visible
+            # (burying them made books reopen at zero progress).
+            self.assertEqual(migrated.get(0), "possibly Arabic")
+            self.assertEqual(migrated.data["legacy_translations"], {})
+
+    def test_buried_legacy_translations_are_restored_on_load(self):
+        with tempfile.TemporaryDirectory(dir=_TEST_HOME) as folder:
+            source = os.path.join(folder, "buried.epub")
+            with open(source, "wb") as fh:
+                fh.write(b"source")
+            job = core.JobStore(source)
+            job.direction = "en2fa"
+            job.data["direction"] = "en2fa"
+            job.data["translations"] = {}
+            job.data["translations_by_direction"] = {"en2fa": {}}
+            job.data["legacy_translations"] = {"0": "صفحهٔ یک", "1": "صفحهٔ دو"}
+            job.save()
+
+            reloaded = core.JobStore(source).load()
+            self.assertEqual(reloaded.count(), 2)
+            self.assertEqual(reloaded.get(1), "صفحهٔ دو")
+            self.assertEqual(reloaded.data["legacy_translations"], {})
             self.assertEqual(
-                migrated.data["legacy_translations"], {"0": "possibly Arabic"}
+                reloaded.data["translations_by_direction"]["en2fa"].get("0"),
+                "صفحهٔ یک",
             )
 
     def test_gemini_3_uses_model_default_temperature(self):
