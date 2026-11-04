@@ -3,6 +3,7 @@
 ### 🌐 Telegram: [@mohaka_programmer](https://t.me/mohaka_programmer)
 
 [![Telegram](https://img.shields.io/badge/Telegram-%40mohaka__programmer-2CA5E0?logo=telegram&logoColor=white)](https://t.me/mohaka_programmer)
+### 🔗 Website: [mhkaman.com](https://mhkaman.com) · 📖 Docs: [Project Wiki](https://github.com/Mohammad-Hasan-Kaman/kaman-ai-translator/wiki)
 
 ---
 
