@@ -212,6 +212,16 @@ python translator_app_v3.py
 4. While it runs: **⏸ Pause** pauses (Settings becomes editable), **■ Cancel** cancels safely, and the current page follows along automatically.
 5. When a page finishes: read it → tick **✓ Reviewed** if approved → **📋 Copy** or export the whole book.
 
+### Getting a Gemini API key
+
+The Gemini engine needs a free Google AI Studio key - no card required:
+
+1. Open [aistudio.google.com](https://aistudio.google.com) and sign in with a Google account.
+2. Choose **Get API key** -> **Create API key**, and copy the key.
+3. In the app: **Settings -> Gemini**, paste the key, keep the default model (or set your own), and press **Test connection**.
+
+Google AI Studio is available only in supported regions. If the page does not open or reports that the service is unavailable in your region, connect from a supported region first - the app needs the same route every time it calls the Gemini API.
+
 ---
 
 ## Settings reference
