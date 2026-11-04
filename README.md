@@ -103,6 +103,8 @@ Translating a 300-page book with a chat window does not work: context windows ar
 - Built-in **Test connection** with a clear success/failure report; for OpenAI-compatible servers it also verifies structured (JSON) output and warns about small local context windows.
 - Automatic **retry** on transient failures and quota detection with a safe pause.
 
+> **A note on output quality.** This app sends your text to the provider and model **you** configure, and returns what that model produces. Translation quality, completeness and accuracy therefore depend on the provider and model you choose, on their current load, and on your plan's limits: an overloaded, rate-limited or entry-level model can produce weaker, incomplete or occasionally incorrect output, and when the selected model is unavailable a fallback model may answer in its place - the **Test connection** report tells you which model actually responded. If a translation looks off, check the provider and model first, or switch to a stronger model, and always review important translations before relying on them. This is a property of the AI service you connect to, not of the app itself.
+
 ### Local servers (Ollama / LM Studio)
 
 The translator also works fully offline against a local OpenAI-compatible server. Start the server first, then use these values in **Settings**:
