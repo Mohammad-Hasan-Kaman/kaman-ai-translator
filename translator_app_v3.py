@@ -64,75 +64,87 @@ from kaman_core import (
 
 
 # ============================== تم برنامه ==============================
+# زبان بصری: «کاغذ و جوهر» — خنثی‌های گرمِ کاغذی/جوهری، یک لهجهٔ واحد
+# (آبیِ جوهرِ نوشتار) فقط برای کنش اصلی، پیشرفت و انتخاب. ردیف‌های ابزار
+# کارتِ شناور نیستند؛ با خط مویی (hairline) از هم جدا می‌شوند و دو پنلِ
+# متن، مثل دو صفحهٔ روبه‌روی کتاب، تنها سطوحِ برجستهٔ پنجره‌اند.
+# چند مقدار قدیمی عمداً نگه داشته شده‌اند چون تست‌های رگرسیون مالک آن‌ها
+# را قفل کرده‌اند: #64748b راهنماهای تنظیمات در تم روشن، #cbd5e1 خط زیر
+# عنوان بخش در تم روشن، #e2e8f0 شیار نوار پیشرفت در تم روشن، و
+# قانون‌های وضعیت‌دارِ دکمهٔ کپی (QPushButton#btnCopy) در هر دو تم.
 
 DARK_STYLESHEET = """
-    QMainWindow { background-color: #0f172a; }
-    QFrame { background-color: #1e293b; border-radius: 12px; padding: 8px; }
-    QLabel { color: #f1f5f9; font-family: 'Tahoma'; font-size: 11pt; }
-    QPushButton { background-color: #3b82f6; color: white; border-radius: 8px; padding: 10px 18px; font-family: 'Tahoma'; font-size: 10pt; font-weight: bold; }
-    QPushButton:hover { background-color: #2563eb; }
-    QPushButton:disabled { background-color: #475569; color: #94a3b8; }
-    QPushButton#btnCopy { background-color: #2563eb; color: white; font-weight: bold; }
-    QPushButton#btnCopy:hover { background-color: #1d4ed8; }
-    QPushButton#btnCopy:disabled { background-color: #475569; color: #94a3b8; }
-    QTextEdit { background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 12px; padding: 15px; font-size: 11pt; }
-    QProgressBar { border: none; background-color: #334155; height: 6px; border-radius: 3px; }
-    QProgressBar::chunk { background-color: #10b981; border-radius: 3px; }
-    QScrollArea { border: 1px solid #334155; border-radius: 12px; background-color: #1e293b; }
-    QComboBox { background-color: #334155; color: #f1f5f9; border: 1px solid #475569; border-radius: 8px; padding: 8px 14px; font-family: 'Tahoma'; font-size: 10pt; }
-    QComboBox:hover { background-color: #3f4f66; }
+    QMainWindow { background-color: #171713; }
+    QFrame { background: transparent; border: none; }
+    QFrame#bar { border-bottom: 1px solid #37362c; padding: 2px 2px 10px; }
+    QLabel { color: #ede9df; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 11pt; }
+    QPushButton { background-color: #26261f; color: #ede9df; border: 1px solid #37362c; border-radius: 6px; padding: 8px 16px; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; }
+    QPushButton:hover { background-color: #2e2d24; border-color: #4a493c; }
+    QPushButton:pressed { background-color: #201f1a; }
+    QPushButton:disabled { background-color: #1c1b16; color: #6f6c60; border-color: #2b2a22; }
+    QPushButton#btnCopy { background-color: #26261f; color: #ede9df; border: 1px solid #37362c; }
+    QPushButton#btnCopy:hover { background-color: #2e2d24; border-color: #4a493c; }
+    QPushButton#btnCopy:disabled { background-color: #1c1b16; color: #6f6c60; border-color: #2b2a22; }
+    QTextEdit { background-color: #201f1a; color: #f0ece1; border: 1px solid #37362c; border-radius: 8px; padding: 14px; selection-background-color: #1e40af; selection-color: white; }
+    QProgressBar { border: none; background-color: #2b2b22; height: 6px; border-radius: 3px; }
+    QProgressBar::chunk { background-color: #5b8def; border-radius: 3px; }
+    QScrollArea { border: 1px solid #37362c; border-radius: 8px; background-color: #201f1a; }
+    QComboBox { background-color: #201f1a; color: #ede9df; border: 1px solid #37362c; border-radius: 6px; padding: 7px 12px; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; }
+    QComboBox:hover { background-color: #26261f; border-color: #4a493c; }
     QComboBox::drop-down { border: none; width: 22px; }
-    QComboBox QAbstractItemView { background-color: #1e293b; color: #f1f5f9; border: 1px solid #334155; selection-background-color: #2563eb; selection-color: white; }
-    QLineEdit { background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; padding: 8px 12px; font-size: 10pt; selection-background-color: #2563eb; selection-color: white; }
-    QSpinBox { background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 5px 8px 5px 26px; font-size: 10pt; }
-    QSpinBox:disabled { background-color: #334155; color: #cbd5e1; border-color: #475569; }
-    QDialog { background-color: #0f172a; }
-    QCheckBox, QRadioButton { color: #f1f5f9; font-family: 'Tahoma'; font-size: 10pt; background: transparent; spacing: 8px; }
-    QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #64748b; background-color: #1e293b; }
-    QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-    QRadioButton::indicator { width: 14px; height: 14px; border-radius: 7px; border: 1px solid #64748b; background-color: #1e293b; }
-    QRadioButton::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-    QMenu { background-color: #1e293b; color: #f1f5f9; border: 1px solid #334155; }
-    QMenu::item:selected { background-color: #2563eb; }
-    QMessageBox { background-color: #1e293b; }
-    QDialog#settingsDialog { background-color: #0f172a; color: #f1f5f9; }
-    QWidget#settingsContent { background-color: #0f172a; color: #f1f5f9; }
-    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #0f172a; }
+    QComboBox QAbstractItemView { background-color: #201f1a; color: #ede9df; border: 1px solid #37362c; selection-background-color: #1e40af; selection-color: white; }
+    QLineEdit { background-color: #201f1a; color: #f0ece1; border: 1px solid #37362c; border-radius: 6px; padding: 8px 12px; font-size: 10pt; selection-background-color: #1e40af; selection-color: white; }
+    QSpinBox { background-color: #201f1a; color: #f0ece1; border: 1px solid #37362c; border-radius: 6px; padding: 5px 8px 5px 26px; font-size: 10pt; }
+    QSpinBox:disabled { background-color: #26261f; color: #a09c8f; border-color: #37362c; }
+    QDialog { background-color: #171713; }
+    QCheckBox, QRadioButton { color: #ede9df; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; background: transparent; spacing: 8px; }
+    QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #6f6c60; background-color: #201f1a; }
+    QCheckBox::indicator:checked { background-color: #2563eb; border-color: #2563eb; }
+    QRadioButton::indicator { width: 14px; height: 14px; border-radius: 7px; border: 1px solid #6f6c60; background-color: #201f1a; }
+    QRadioButton::indicator:checked { background-color: #2563eb; border-color: #2563eb; }
+    QMenu { background-color: #201f1a; color: #ede9df; border: 1px solid #37362c; }
+    QMenu::item:selected { background-color: #1e40af; color: white; }
+    QMessageBox { background-color: #201f1a; }
+    QDialog#settingsDialog { background-color: #171713; color: #ede9df; }
+    QWidget#settingsContent { background-color: #171713; color: #ede9df; }
+    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #171713; border: none; }
 """
 
 LIGHT_STYLESHEET = """
-    QMainWindow { background-color: #f1f5f9; }
-    QFrame { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px; }
-    QLabel { color: #0f172a; font-family: 'Tahoma'; font-size: 11pt; }
-    QPushButton { background-color: #2563eb; color: white; border-radius: 8px; padding: 10px 18px; font-family: 'Tahoma'; font-size: 10pt; font-weight: bold; }
-    QPushButton:hover { background-color: #1d4ed8; }
-    QPushButton:disabled { background-color: #cbd5e1; color: #94a3b8; }
-    QPushButton#btnCopy { background-color: #2563eb; color: white; font-weight: bold; }
-    QPushButton#btnCopy:hover { background-color: #1d4ed8; }
-    QPushButton#btnCopy:disabled { background-color: #cbd5e1; color: #94a3b8; }
-    QTextEdit { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; font-size: 11pt; }
+    QMainWindow { background-color: #f3f0e8; }
+    QFrame { background: transparent; border: none; }
+    QFrame#bar { border-bottom: 1px solid #ddd5c2; padding: 2px 2px 10px; }
+    QLabel { color: #2b2723; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 11pt; }
+    QPushButton { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 6px; padding: 8px 16px; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; }
+    QPushButton:hover { background-color: #faf7ee; border-color: #b9b09a; }
+    QPushButton:pressed { background-color: #efeade; }
+    QPushButton:disabled { background-color: #ece7d9; color: #a39a86; border-color: #ddd5c2; }
+    QPushButton#btnCopy { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; }
+    QPushButton#btnCopy:hover { background-color: #faf7ee; border-color: #b9b09a; }
+    QPushButton#btnCopy:disabled { background-color: #ece7d9; color: #a39a86; border-color: #ddd5c2; }
+    QTextEdit { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 8px; padding: 14px; selection-background-color: #1e40af; selection-color: white; }
     QProgressBar { border: none; background-color: #e2e8f0; height: 6px; border-radius: 3px; }
-    QProgressBar::chunk { background-color: #10b981; border-radius: 3px; }
-    QScrollArea { border: 1px solid #cbd5e1; border-radius: 12px; background-color: #ffffff; }
-    QComboBox { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 14px; font-family: 'Tahoma'; font-size: 10pt; }
-    QComboBox:hover { background-color: #f8fafc; border-color: #94a3b8; }
+    QProgressBar::chunk { background-color: #1e40af; border-radius: 3px; }
+    QScrollArea { border: 1px solid #d5cdb8; border-radius: 8px; background-color: #fdfcf8; }
+    QComboBox { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 6px; padding: 7px 12px; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; }
+    QComboBox:hover { background-color: #faf7ee; border-color: #b9b09a; }
     QComboBox::drop-down { border: none; width: 22px; }
-    QComboBox QAbstractItemView { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; selection-background-color: #2563eb; selection-color: white; }
-    QLineEdit { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 10pt; selection-background-color: #2563eb; selection-color: white; }
-    QSpinBox { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px 5px 26px; font-size: 10pt; }
-    QSpinBox:disabled { background-color: #e2e8f0; color: #475569; border-color: #cbd5e1; }
-    QDialog { background-color: #f8fafc; }
-    QCheckBox, QRadioButton { color: #0f172a; font-family: 'Tahoma'; font-size: 10pt; background: transparent; spacing: 8px; }
-    QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #94a3b8; background-color: #ffffff; }
+    QComboBox QAbstractItemView { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; selection-background-color: #1e40af; selection-color: white; }
+    QLineEdit { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 6px; padding: 8px 12px; font-size: 10pt; selection-background-color: #1e40af; selection-color: white; }
+    QSpinBox { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 6px; padding: 5px 8px 5px 26px; font-size: 10pt; }
+    QSpinBox:disabled { background-color: #ece7d9; color: #6e6759; border-color: #d5cdb8; }
+    QDialog { background-color: #f3f0e8; }
+    QCheckBox, QRadioButton { color: #2b2723; font-family: 'Segoe UI', 'Tahoma', sans-serif; font-size: 10pt; background: transparent; spacing: 8px; }
+    QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #a39a86; background-color: #fdfcf8; }
     QCheckBox::indicator:checked { background-color: #2563eb; border-color: #2563eb; }
-    QRadioButton::indicator { width: 14px; height: 14px; border-radius: 7px; border: 1px solid #94a3b8; background-color: #ffffff; }
+    QRadioButton::indicator { width: 14px; height: 14px; border-radius: 7px; border: 1px solid #a39a86; background-color: #fdfcf8; }
     QRadioButton::indicator:checked { background-color: #2563eb; border-color: #2563eb; }
-    QMenu { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
-    QMenu::item:selected { background-color: #2563eb; color: white; }
-    QMessageBox { background-color: #ffffff; }
-    QDialog#settingsDialog { background-color: #f8fafc; color: #0f172a; }
-    QWidget#settingsContent { background-color: #f8fafc; color: #0f172a; }
-    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #f8fafc; }
+    QMenu { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; }
+    QMenu::item:selected { background-color: #1e40af; color: white; }
+    QMessageBox { background-color: #fdfcf8; }
+    QDialog#settingsDialog { background-color: #f3f0e8; color: #2b2723; }
+    QWidget#settingsContent { background-color: #f3f0e8; color: #2b2723; }
+    QScrollArea#settingsScroll, QScrollArea#settingsScroll QWidget#settingsContent { background-color: #f3f0e8; border: none; }
 """
 
 
@@ -177,12 +189,12 @@ def section_label(text, dark=True):
     lbl = QLabel(text)
     if dark:
         lbl.setStyleSheet(
-            "font-weight: bold; font-size: 11pt; color: #3b82f6;"
-            "border-bottom: 1px solid #64748b; padding-bottom: 5px;"
+            "font-weight: bold; font-size: 11pt; color: #d8d2c2;"
+            "border-bottom: 1px solid #37362c; padding-bottom: 5px;"
         )
     else:
         lbl.setStyleSheet(
-            "font-weight: bold; font-size: 11pt; color: #2563eb;"
+            "font-weight: bold; font-size: 11pt; color: #2b2723;"
             "border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;"
         )
     return lbl
@@ -205,15 +217,15 @@ STRINGS = {
         "no_file": "هیچ فایلی انتخاب نشده است",
         "settings": "⚙️ تنظیمات",
         "settings_title": "تنظیمات",
-        "open_book": "📂 انتخاب کتاب (PDF / EPUB)",
+        "open_book": "انتخاب کتاب (PDF / EPUB)",
         "next_page": "◀ صفحه بعد",
         "prev_page": "صفحه قبل ▶",
         "page_label": "صفحه: {cur} / {total}",
-        "translate_page": "🚀 ترجمهٔ این صفحه",
-        "translate_book": "📚 ترجمهٔ کل کتاب",
-        "copy": "📋 کپی",
-        "copy_tip": "📋 کل متن ترجمهٔ صفحهٔ فعلی را کپی می‌کند.\nفقط وقتی این صفحه ترجمه شده باشد فعال (آبی) می‌شود؛ حالت خاکستری = غیرفعال.",
-        "save": "💾 ذخیره",
+        "translate_page": "ترجمهٔ این صفحه",
+        "translate_book": "ترجمهٔ کل کتاب",
+        "copy": "کپی",
+        "copy_tip": "کل متن ترجمهٔ صفحهٔ فعلی را کپی می‌کند.\nفقط وقتی این صفحه ترجمه شده باشد فعال می‌شود؛ حالت خاکستری = غیرفعال.",
+        "save": "ذخیره",
         "save_page_act": "ترجمهٔ صفحهٔ فعلی (TXT)…",
         "save_md_act": "کل کتاب (Markdown)…",
         "save_html_act": "کل کتاب با تصاویر (HTML)…",
@@ -223,8 +235,8 @@ STRINGS = {
         "lang_fa": "فارسی",
         "lang_ar": "عربی",
         "lang_hint": "اگر مبدأ و مقصد یکی شود، دیگری خودکار جابه‌جا می‌شود و انتخابتان در همهٔ کتاب‌ها می‌ماند.",
-        "view_source": "📝 نمایش متن مبدأ",
-        "view_image": "🖼 نمایش تصویر صفحه",
+        "view_source": "نمایش متن مبدأ",
+        "view_image": "نمایش تصویر صفحه",
         "reviewed": "✓ بازبینی شد (تأیید انسانی)",
         "reviewed_tip": "✓ وقتی ترجمهٔ این صفحه را خودتان خواندید و تأیید کردید تیک بزنید.\nدر آمار (بازبینی‌شده) و خروجی نهایی کتاب لحاظ می‌شود.",
         "ready": "آماده",
@@ -233,8 +245,8 @@ STRINGS = {
         "resume_btn": "▶ ادامه",
         "cancel_btn": "■ لغو",
         "cancel_plain": "انصراف",
-        "page_image_title": "📖 تصویر صفحه فعلی کتاب",
-        "page_text_title": "📝 متن مبدأ صفحهٔ فعلی",
+        "page_image_title": "تصویر صفحه فعلی کتاب",
+        "page_text_title": "متن مبدأ صفحهٔ فعلی",
         "image_placeholder": "تصویر صفحهٔ کتاب به محض بارگذاری اینجا رندر می‌شود.",
         "source_placeholder": "متن استخراج‌شدهٔ مبدأ این صفحه اینجا نمایش داده می‌شود.",
         "output_title": "📝 ترجمه",
@@ -311,8 +323,8 @@ STRINGS = {
         "key_ph_local": "کلید (برای سرور لوکال معمولاً دلخواه است)",
         "model_ph_openai": "خالی بگذارید تا برنامه از سرور مدل پیدا کند؛ مثلاً qwen2.5:14b",
         "model_ph_gemini": "gemini-3.8-flash",
-        "encrypt_note": "🔒 کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:",
-        "open_folder": "📂 باز کردن پوشه",
+        "encrypt_note": "کلید API به‌صورت رمزنگاری‌شده (DPAPI ویندوز) ذخیره می‌شود. تنظیمات و ترجمه‌های شما فقط در این پوشهٔ رایانهٔ شماست:",
+        "open_folder": "باز کردن پوشه",
         "open_folder_tip": "پوشهٔ ذخیرهٔ تنظیمات، کلید رمزنگاری‌شده و ترجمه‌های شما را در ویندوز باز می‌کند.",
         "theme_label": "تم برنامه:",
         "theme_system": "سیستم (خودکار)",
@@ -320,8 +332,8 @@ STRINGS = {
         "theme_light": "لایت",
         "ui_lang_label": "زبان برنامه:",
         "ui_lang_hint": "زبان رابط پس از ذخیره فوراً اعمال می‌شود.",
-        "local_hint": "💡 سرور لوکال: مدل پیشنهادی qwen2.5:14b یا قوی‌تر است. در Ollama پنجرهٔ کانتکست پیش‌فرض کوچک است؛ برای کتاب‌های طولانی num_ctx را بالا ببرید (مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند.",
-        "structure_section": "🧩 ساختار کتاب و تمپلیت",
+        "local_hint": "سرور لوکال: مدل پیشنهادی qwen2.5:14b یا قوی‌تر است. در Ollama پنجرهٔ کانتکست پیش‌فرض کوچک است؛ برای کتاب‌های طولانی num_ctx را بالا ببرید (مثلاً 16384) وگرنه پاسخ‌ها نصفه قطع می‌شوند.",
+        "structure_section": "ساختار کتاب و تمپلیت",
         "struct_auto": "تحلیل خودکار ساختار هنگام باز شدن فایل (محلی و رایگان)",
         "struct_ai": "تشخیص عمیق ساختار با هوش مصنوعی (۱ درخواست API برای هر فایل)",
         "struct_editor": "نمایش ویرایشگر تمپلیت (ویرایش دستی سرفصل‌ها و برچسب‌ها)",
@@ -332,9 +344,9 @@ STRINGS = {
         "editor_hint_job": "این فهرست‌ها در پرامپت ترجمه استفاده می‌شوند تا هر سرفصل/برچسبِ تکرارشوندهٔ همین کتاب همیشه یک‌جور ترجمه شود. پس از باز کردن فایل به‌صورت خودکار پر می‌شوند (رایگان و محلی)؛ اینجا می‌توانید اصلاح یا افزایششان کنید و با «ذخیرهٔ تنظیمات» برای همین فایل ثبت کنید.",
         "editor_hint_nojob": "این فهرست‌ها بعد از باز کردن یک فایل به‌صورت خودکار تحلیل و پر می‌شوند (رایگان و محلی). برای ویرایش دستی، ابتدا فایلی باز کنید.",
         "testing": "در حال تست اتصال…",
-        "test_btn": "🧪 تست اتصال",
+        "test_btn": "تست اتصال",
         "save_btn": "ذخیره",
-        "batch_title": "📚 ترجمهٔ خودکار کل کتاب",
+        "batch_title": "ترجمهٔ خودکار کل کتاب",
         "range_section": "۱. محدودهٔ ترجمه",
         "all_pages": "کل کتاب ({n} صفحه)",
         "range_radio": "محدودهٔ خاصی از صفحات",
@@ -355,15 +367,15 @@ STRINGS = {
         "no_file": "No file selected",
         "settings": "⚙️ Settings",
         "settings_title": "Settings",
-        "open_book": "📂 Open book (PDF / EPUB)",
+        "open_book": "Open book (PDF / EPUB)",
         "next_page": "Next page ▶",
         "prev_page": "◀ Previous page",
         "page_label": "Page: {cur} / {total}",
-        "translate_page": "🚀 Translate this page",
-        "translate_book": "📚 Translate whole book",
-        "copy": "📋 Copy",
-        "copy_tip": "📋 Copies the full translation of the current page.\nIt is enabled (blue) only when this page is translated; grey = disabled.",
-        "save": "💾 Save",
+        "translate_page": "Translate this page",
+        "translate_book": "Translate whole book",
+        "copy": "Copy",
+        "copy_tip": "Copies the full translation of the current page.\nIt is enabled only when this page is translated; grey = disabled.",
+        "save": "Save",
         "save_page_act": "Current page translation (TXT)…",
         "save_md_act": "Whole book (Markdown)…",
         "save_html_act": "Whole book with images (HTML)…",
@@ -373,8 +385,8 @@ STRINGS = {
         "lang_fa": "Persian",
         "lang_ar": "Arabic",
         "lang_hint": "If source and target collide, the other one swaps automatically; your choice persists across all books.",
-        "view_source": "📝 Show source text",
-        "view_image": "🖼 Show page image",
+        "view_source": "Show source text",
+        "view_image": "Show page image",
         "reviewed": "✓ Reviewed (human-approved)",
         "reviewed_tip": "✓ Tick this once you have read and approved this page's translation yourself.\nIt counts in the stats (reviewed) and in the final book output.",
         "ready": "Ready",
@@ -383,8 +395,8 @@ STRINGS = {
         "resume_btn": "▶ Resume",
         "cancel_btn": "■ Cancel",
         "cancel_plain": "Cancel",
-        "page_image_title": "📖 Current page image",
-        "page_text_title": "📝 Current page source text",
+        "page_image_title": "Current page image",
+        "page_text_title": "Current page source text",
         "image_placeholder": "The page image will be rendered here once a book is loaded.",
         "source_placeholder": "The extracted source text of this page will appear here.",
         "output_title": "📝 Translation",
@@ -461,8 +473,8 @@ STRINGS = {
         "key_ph_local": "Key (for local servers, usually arbitrary)",
         "model_ph_openai": "Leave blank to discover a server model; e.g. qwen2.5:14b",
         "model_ph_gemini": "gemini-3.8-flash",
-        "encrypt_note": "🔒 The API key is stored encrypted (Windows DPAPI). Your settings and translations live only in this folder on your computer:",
-        "open_folder": "📂 Open folder",
+        "encrypt_note": "The API key is stored encrypted (Windows DPAPI). Your settings and translations live only in this folder on your computer:",
+        "open_folder": "Open folder",
         "open_folder_tip": "Opens the folder holding your settings, encrypted key and translations in Windows Explorer.",
         "theme_label": "App theme:",
         "theme_system": "System (auto)",
@@ -470,8 +482,8 @@ STRINGS = {
         "theme_light": "Light",
         "ui_lang_label": "App language:",
         "ui_lang_hint": "The interface language takes effect as soon as you save.",
-        "local_hint": "💡 Local server: a recommended model is qwen2.5:14b or stronger. Ollama's default context window is small; for long books raise num_ctx (e.g. 16384) or replies will be cut off.",
-        "structure_section": "🧩 Book structure & template",
+        "local_hint": "Local server: a recommended model is qwen2.5:14b or stronger. Ollama's default context window is small; for long books raise num_ctx (e.g. 16384) or replies will be cut off.",
+        "structure_section": "Book structure & template",
         "struct_auto": "Automatic structure analysis when a file opens (local & free)",
         "struct_ai": "Deep structure detection with AI (1 API request per file)",
         "struct_editor": "Show template editor (manual heading/label editing)",
@@ -482,9 +494,9 @@ STRINGS = {
         "editor_hint_job": "These lists are used in the translation prompt so every repeated heading/label in this book is always translated the same way. They are filled automatically after opening a file (free & local); you can edit or extend them here and press “Save settings” to store them for this file.",
         "editor_hint_nojob": "These lists are analysed and filled automatically after you open a file (free & local). To edit them manually, open a file first.",
         "testing": "Testing connection…",
-        "test_btn": "🧪 Test connection",
+        "test_btn": "Test connection",
         "save_btn": "Save",
-        "batch_title": "📚 Whole-book auto translation",
+        "batch_title": "Whole-book auto translation",
         "range_section": "1. Translation range",
         "all_pages": "Whole book ({n} pages)",
         "range_radio": "A specific page range",
@@ -838,7 +850,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(row)
 
         # --- آدرس endpoint: پروفایل جدا برای OpenAI-compatible و Gemini ---
-        hint_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
+        hint_color = "#a39e93" if self._theme_mode == "dark" else "#64748b"
         self.row_base = QHBoxLayout()
         self.lbl_base = QLabel(S("base_label"))
         self.txt_base = QLineEdit(self.cfg.get("base_url", ""))
@@ -888,7 +900,7 @@ class SettingsDialog(QDialog):
         # راهنمای سرور لوکال (فقط برای موتور سازگار با OpenAI دیده می‌شود)
         self.lbl_local_hint = QLabel(S("local_hint"))
         self.lbl_local_hint.setWordWrap(True)
-        hint_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
+        hint_color = "#a39e93" if self._theme_mode == "dark" else "#64748b"
         self.lbl_local_hint.setStyleSheet(f"color: {hint_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_local_hint)
 
@@ -898,7 +910,7 @@ class SettingsDialog(QDialog):
 
         data_row = QHBoxLayout()
         self.lbl_data_dir = QLabel(core.config_dir())
-        dir_color = "#38bdf8" if self._theme_mode == "dark" else "#2563eb"
+        dir_color = "#b3aea0" if self._theme_mode == "dark" else "#6e6759"
         self.lbl_data_dir.setStyleSheet(
             f"color: {dir_color}; font-size: 9pt; font-family: Consolas, monospace;"
         )
@@ -1190,7 +1202,7 @@ class BatchDialog(QDialog):
         self.radio_restart = None
         self.lbl_resume = QLabel("")
         self.lbl_resume.setWordWrap(True)
-        resume_color = "#38bdf8" if self._theme_mode == "dark" else "#2563eb"
+        resume_color = "#8fb0ea" if self._theme_mode == "dark" else "#1e40af"
         self.lbl_resume.setStyleSheet(f"color: {resume_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_resume)
         completed = job.count() if job else 0
@@ -1232,7 +1244,7 @@ class BatchDialog(QDialog):
 
         # --- جمع‌بندی + دکمه‌ها (تفویق بصری: شروع پررنگ، انصراف خنثی) ---
         self.lbl_estimate = QLabel("")
-        estimate_color = "#94a3b8" if self._theme_mode == "dark" else "#64748b"
+        estimate_color = "#a39e93" if self._theme_mode == "dark" else "#6e6759"
         self.lbl_estimate.setStyleSheet(f"color: {estimate_color}; font-size: 9pt;")
         layout.addWidget(self.lbl_estimate)
 
@@ -1241,17 +1253,29 @@ class BatchDialog(QDialog):
         btn_row.addStretch()
         self.btn_cancel = QPushButton(S("cancel_plain"))
         self.btn_cancel.setMinimumWidth(120)
-        self.btn_cancel.setStyleSheet(
-            "QPushButton { background-color: #475569; color: #e2e8f0; }"
-            "QPushButton:hover { background-color: #64748b; }"
-        )
+        if self._theme_mode == "dark":
+            self.btn_cancel.setStyleSheet(
+                "QPushButton { background-color: #26261f; color: #ede9df; border: 1px solid #37362c; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #2e2d24; }"
+            )
+        else:
+            self.btn_cancel.setStyleSheet(
+                "QPushButton { background-color: #fdfcf8; color: #2b2723; border: 1px solid #d5cdb8; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #faf7ee; }"
+            )
         self.btn_cancel.clicked.connect(self.reject)
         self.btn_start = QPushButton(S("start_btn"))
         self.btn_start.setMinimumWidth(150)
-        self.btn_start.setStyleSheet(
-            "QPushButton { background-color: #f59e0b; color: #451a03; font-weight: bold; }"
-            "QPushButton:hover { background-color: #fbbf24; }"
-        )
+        if self._theme_mode == "dark":
+            self.btn_start.setStyleSheet(
+                "QPushButton { background-color: #1e40af; color: #ffffff; font-weight: bold; border: 1px solid #1e40af; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #2a52b8; border-color: #2a52b8; }"
+            )
+        else:
+            self.btn_start.setStyleSheet(
+                "QPushButton { background-color: #1e40af; color: #ffffff; font-weight: bold; border: 1px solid #1e40af; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #1e3a8a; border-color: #1e3a8a; }"
+            )
         self.btn_start.clicked.connect(self.accept)
         btn_row.addWidget(self.btn_cancel)
         btn_row.addWidget(self.btn_start)
@@ -1366,11 +1390,12 @@ class ModernTranslatorApp(QMainWindow):
         # RTL سراسری، Qt آن را دوباره می‌چرخاند و خروجی LTR می‌شود (تست شده).
         # همچنین setDirection روی QVBoxLayout لایوت را «افقی» می‌کند.
         main_layout = QVBoxLayout(main_widget)
-        main_layout.setContentsMargins(18, 18, 18, 18)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(16, 14, 16, 14)
+        main_layout.setSpacing(10)
 
         # هدر
         header_frame = QFrame()
+        header_frame.setObjectName("bar")
         header_layout = QHBoxLayout(header_frame)
         self.lbl_file = QLabel(S("no_file"))
         self.btn_settings = QPushButton(S("settings"))
@@ -1384,6 +1409,7 @@ class ModernTranslatorApp(QMainWindow):
 
         # ناوبری
         nav_frame = QFrame()
+        nav_frame.setObjectName("bar")
         nav_layout = QHBoxLayout(nav_frame)
         self.btn_next = QPushButton(S("next_page"))
         self.btn_next.setEnabled(False)
@@ -1432,6 +1458,7 @@ class ModernTranslatorApp(QMainWindow):
 
         # ردیف زبان مبدأ / مقصد (قفل دوگانه: هرگز یکی نمی‌شوند)
         lang_frame = QFrame()
+        lang_frame.setObjectName("bar")
         lang_layout = QHBoxLayout(lang_frame)
 
         self.lbl_src_lang = QLabel(S("src_lang"))
@@ -1456,7 +1483,7 @@ class ModernTranslatorApp(QMainWindow):
         self.combo_tgt.currentIndexChanged.connect(self.on_tgt_changed)
 
         lbl_lang_hint = QLabel(S("lang_hint"))
-        lang_hint_color = "#94a3b8" if effective_theme(self.cfg) == "dark" else "#64748b"
+        lang_hint_color = "#a39e93" if effective_theme(self.cfg) == "dark" else "#64748b"
         lbl_lang_hint.setStyleSheet(f"color: {lang_hint_color}; font-size: 9pt;")
 
         lang_layout.addWidget(self.lbl_src_lang)
@@ -1470,6 +1497,7 @@ class ModernTranslatorApp(QMainWindow):
 
         # ردیف بازبینی
         review_frame = QFrame()
+        review_frame.setObjectName("bar")
         review_layout = QHBoxLayout(review_frame)
         self.btn_view_source = QPushButton(S("view_source"))
         self.btn_view_source.setEnabled(False)
@@ -1486,9 +1514,10 @@ class ModernTranslatorApp(QMainWindow):
 
         # نوار وضعیت / کنترل ترجمه (مشترک تک‌صفحه و کل کتاب)
         status_frame = QFrame()
+        status_frame.setObjectName("bar")
         status_layout = QHBoxLayout(status_frame)
         self.lbl_status = QLabel(S("ready"))
-        self.lbl_status.setStyleSheet("color: #38bdf8; font-weight: bold;")
+        self.lbl_status.setStyleSheet("font-weight: bold;")
         self.btn_pause = QPushButton(S("pause"))
         self.btn_pause.setEnabled(False)
         self.btn_pause.clicked.connect(self.on_pause_clicked)
@@ -1509,7 +1538,7 @@ class ModernTranslatorApp(QMainWindow):
         self.progress_bar.setVisible(False)
         # درصد، جداگانه و در سمت راست نوار (شروع سطر RTL)
         self.lbl_percent = QLabel(S("percent", n=num(0)))
-        self.lbl_percent.setStyleSheet("color: #10b981; font-weight: bold; font-size: 11pt;")
+        self.lbl_percent.setStyleSheet("font-weight: bold; font-size: 11pt;")
         self.lbl_percent.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
@@ -1523,7 +1552,7 @@ class ModernTranslatorApp(QMainWindow):
 
         page_column = QVBoxLayout()
         self.lbl_page_title = QLabel(S("page_image_title"))
-        self.lbl_page_title.setStyleSheet("font-weight: bold; color: #3b82f6;")
+        self.lbl_page_title.setStyleSheet("font-weight: bold;")
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -1534,7 +1563,7 @@ class ModernTranslatorApp(QMainWindow):
 
         self.txt_source = QTextEdit()
         self.txt_source.setReadOnly(True)
-        self.txt_source.setFont(QFont("Tahoma", 11))
+        self.txt_source.setFont(QFont("Georgia", 11))
         self.txt_source.setVisible(False)
         self.txt_source.setPlaceholderText(S("source_placeholder"))
 
@@ -1544,10 +1573,10 @@ class ModernTranslatorApp(QMainWindow):
 
         translation_column = QVBoxLayout()
         self.lbl_output_title = QLabel(S("output_title"))
-        self.lbl_output_title.setStyleSheet("font-weight: bold; color: #10b981;")
+        self.lbl_output_title.setStyleSheet("font-weight: bold;")
         self.txt_output = QTextEdit()
         self.txt_output.setReadOnly(True)
-        self.txt_output.setFont(QFont("Tahoma", 12))
+        self.txt_output.setFont(QFont("Georgia", 12))
         self.txt_output.setText(S("output_placeholder"))
         translation_column.addWidget(self.lbl_output_title)
         translation_column.addWidget(self.txt_output)
@@ -1593,7 +1622,7 @@ class ModernTranslatorApp(QMainWindow):
                 extra += (
                     "\nQSpinBox::up-button, QSpinBox::down-button {"
                     " subcontrol-origin: border; width: 16px; height: 12px;"
-                    " background-color: #64748b; border: none; border-radius: 3px;"
+                    " background-color: #787165; border: none; border-radius: 3px;"
                     " margin: 2px; }"
                     f'\nQSpinBox::up-button {{ image: url("{up_url}"); }}'
                     f'\nQSpinBox::down-button {{ image: url("{down_url}"); }}'
@@ -1601,30 +1630,36 @@ class ModernTranslatorApp(QMainWindow):
             app.setStyleSheet(sheet + extra)
 
         if mode == "light":
-            self.lbl_page.setStyleSheet("font-weight: bold; font-size: 11pt; color: #0284c7;")
-            self.lbl_status.setStyleSheet("color: #0284c7; font-weight: bold;")
-            self.lbl_image_viewer.setStyleSheet("background-color: #ffffff; color: #64748b;")
-            self.btn_translate.setStyleSheet(
-                "background-color: #10b981; color: #064e3b; font-weight: bold;"
-            )
+            self.lbl_page.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2b2723;")
+            self.lbl_status.setStyleSheet("color: #1e40af; font-weight: bold;")
+            self.lbl_percent.setStyleSheet("color: #1e40af; font-weight: bold; font-size: 11pt;")
+            self.lbl_page_title.setStyleSheet("font-weight: bold; color: #6e6759;")
+            self.lbl_output_title.setStyleSheet("font-weight: bold; color: #6e6759;")
+            self.lbl_image_viewer.setStyleSheet("background-color: #fdfcf8; color: #6e6759;")
+            self.btn_translate.setStyleSheet("")
             self.btn_batch.setStyleSheet(
-                "background-color: #f59e0b; color: #451a03; font-weight: bold;"
+                "QPushButton { background-color: #1e40af; color: #ffffff; font-weight: bold; border: 1px solid #1e40af; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #1e3a8a; border-color: #1e3a8a; }"
+                "QPushButton:disabled { background-color: #ece7d9; color: #a39a86; border-color: #ddd5c2; }"
             )
         else:
-            self.lbl_page.setStyleSheet("font-weight: bold; font-size: 11pt; color: #38bdf8;")
-            self.lbl_status.setStyleSheet("color: #38bdf8; font-weight: bold;")
-            self.lbl_image_viewer.setStyleSheet("background-color: #1e293b; color: #94a3b8;")
-            self.btn_translate.setStyleSheet(
-                "background-color: #5de387; color: #052e16; font-weight: bold;"
-            )
+            self.lbl_page.setStyleSheet("font-weight: bold; font-size: 11pt; color: #ede9df;")
+            self.lbl_status.setStyleSheet("color: #5b8def; font-weight: bold;")
+            self.lbl_percent.setStyleSheet("color: #5b8def; font-weight: bold; font-size: 11pt;")
+            self.lbl_page_title.setStyleSheet("font-weight: bold; color: #b3aea0;")
+            self.lbl_output_title.setStyleSheet("font-weight: bold; color: #b3aea0;")
+            self.lbl_image_viewer.setStyleSheet("background-color: #201f1a; color: #a39e93;")
+            self.btn_translate.setStyleSheet("")
             self.btn_batch.setStyleSheet(
-                "background-color: #fbbf24; color: #451a03; font-weight: bold;"
+                "QPushButton { background-color: #1e40af; color: #ffffff; font-weight: bold; border: 1px solid #1e40af; border-radius: 6px; padding: 8px 16px; }"
+                "QPushButton:hover { background-color: #2a52b8; border-color: #2a52b8; }"
+                "QPushButton:disabled { background-color: #1c1b16; color: #6f6c60; border-color: #2b2a22; }"
             )
 
     def refresh_ui_language(self, previous_language=None):
         """Refresh all main-window labels without discarding the open book."""
         self.lbl_file.setText(
-            f"📂 {os.path.basename(self.current_file)}"
+            f"{os.path.basename(self.current_file)}"
             if self.current_file else S("no_file")
         )
         self.btn_settings.setText(S("settings"))
@@ -1780,7 +1815,7 @@ class ModernTranslatorApp(QMainWindow):
     # ----------------------------- فایل و صفحات -----------------------------
     def set_file_label(self, file_path):
         """فقط نام فایل در هدر — بدون تعداد صفحات (به درخواست کاربر)."""
-        self.lbl_file.setText(f"📂 {os.path.basename(file_path)}")
+        self.lbl_file.setText(f"{os.path.basename(file_path)}")
 
     def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
