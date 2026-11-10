@@ -1,4 +1,4 @@
-![Kaman AI Translator v3.1.0 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
+![Kaman AI Translator v3.2.0 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
 
 ### 🌐 Telegram: [@mohaka_programmer](https://t.me/mohaka_programmer)
 
@@ -187,7 +187,7 @@ The UI runs on `QThread` workers — translation, structure analysis and exports
 
 ### Option A — Windows executable (recommended)
 
-Download `kaman-ai-translator-3.1.0.exe` from the [latest release](../../releases/latest) and run it. No Python required.
+Download `kaman-ai-translator-3.2.0.exe` from the [latest release](../../releases/latest) and run it. No Python required.
 
 ### Option B — Run from source
 
@@ -261,7 +261,7 @@ pyinstaller --noconfirm --clean --onefile --windowed `
   --add-data "icon.png;." `
   --collect-data google.genai `
   --collect-all pydantic --collect-all pydantic_core `
-  --name kaman-ai-translator-3.1.0 `
+  --name kaman-ai-translator-3.2.0 `
   translator_app_v3.py
 ```
 

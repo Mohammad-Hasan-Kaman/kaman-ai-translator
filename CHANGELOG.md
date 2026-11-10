@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-11-10
+
+### Changed
+
+- Complete visual redesign of the interface in a quiet paper-and-ink
+  language: flat surfaces with hairline rules instead of filled cards,
+  one restrained accent colour, and neutral controls throughout.
+- Reading panes now use a serif typeface for long-form book text.
+- Action labels no longer carry emoji; the interface reads as a tool,
+  not a chat window.
+- No changes to translation logic, engines, formats or settings:
+  this release is presentation only.
+
 ## [3.1.0] - 2026-11-01
 
 ### Added
