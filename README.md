@@ -138,6 +138,14 @@ Press **Test connection** after entering the values; a success report means the 
 - Progress percentage follows RTL (fills from the right, number on the right).
 - Live statistics: translated pages vs. reviewed pages of the current book.
 
+<p align="center">
+  <img src="assets/screenshot-main-dark.png" width="49%" alt="Main window, dark theme (Persian UI)">
+  <img src="assets/screenshot-main-light.png" width="49%" alt="Main window, light theme (Persian UI)">
+</p>
+<p align="center">
+  <img src="assets/screenshot-settings.png" width="60%" alt="Settings dialog (Persian UI)">
+</p>
+
 ### 6. Save & export
 
 - Per-page auto-save to a per-file job store (resume-safe across restarts and app updates).
