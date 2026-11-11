@@ -1533,6 +1533,12 @@ class ModernTranslatorApp(QMainWindow):
         self._status_controls = (self.btn_pause, self.btn_cancel_batch)
         status_frame.setVisible(False)
         self._status_frame = status_frame
+        # نوار وضعیت فقط هنگام فعالیت دیده می‌شود: وقتی کاری در جریان نیست،
+        # چند ثانیه بعد از آخرین پیام خودش مخفی می‌شود (قبلاً هر وقت ظاهر
+        # می‌شد تا بستن برنامه می‌ماند و صفحه را شلوغ می‌کرد).
+        self._status_hide_timer = QTimer(self)
+        self._status_hide_timer.setSingleShot(True)
+        self._status_hide_timer.timeout.connect(self._hide_status_if_idle)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)
@@ -2080,9 +2086,32 @@ class ModernTranslatorApp(QMainWindow):
         if busy:
             self.btn_copy.setEnabled(False)
 
+    def _status_bar_busy(self):
+        """آیا فعالیتی در جریان است که نوار وضعیت باید برایش بماند؟
+
+        ترجمهٔ تک‌صفحه یا کل کتاب؛ حالت توقفِ موقت هم «در جریان» حساب
+        می‌شود، چون دکمه‌های ادامه/لغو داخل همین نوارند."""
+        if self.single_worker is not None and self.single_worker.isRunning():
+            return True
+        w = self.batch_worker
+        return w is not None and w.isRunning()
+
+    def _arm_status_hide(self, delay=6000):
+        """اگر کاری در جریان نیست، مخفی‌شدن نوار را زمان‌بندی کن؛
+        وگرنه تایمر را نگه دار تا نوار وسط کار ناپدید نشود."""
+        if self._status_bar_busy():
+            self._status_hide_timer.stop()
+        else:
+            self._status_hide_timer.start(delay)
+
+    def _hide_status_if_idle(self):
+        if not self._status_bar_busy():
+            self._status_frame.setVisible(False)
+
     def _show_status(self, text, controls=None):
         self.lbl_status.setText(text)
         self._status_frame.setVisible(True)
+        self._arm_status_hide(4000)
         if controls is not None:
             self.btn_pause.setVisible(controls)
             self.btn_cancel_batch.setVisible(controls)
@@ -2137,6 +2166,7 @@ class ModernTranslatorApp(QMainWindow):
             w.deleteLater()
             if w is self.single_worker:
                 self.single_worker = None
+                self._arm_status_hide()
 
     def on_progress(self, done, total):
         if total > 1:
@@ -2183,6 +2213,7 @@ class ModernTranslatorApp(QMainWindow):
         self._status_frame.setVisible(True)
         self._set_batch_controls(False)
         self.lbl_status.setText(text)
+        self._arm_status_hide()
 
     # ----------------------------- ترجمهٔ کل کتاب -----------------------------
     def start_batch(self):
@@ -2264,6 +2295,7 @@ class ModernTranslatorApp(QMainWindow):
         self.progress_bar.setRange(0, 0)
         self.lbl_percent.setText("…")
         self._status_frame.setVisible(True)
+        self._status_hide_timer.stop()
         self._set_batch_controls(True)
         self.btn_pause.setText(S("pause"))
         self._following_batch = True  # نمایش زندهٔ صفحهٔ در حال ترجمه
@@ -2275,6 +2307,7 @@ class ModernTranslatorApp(QMainWindow):
             w.deleteLater()
             if w is self.batch_worker:
                 self.batch_worker = None
+                self._arm_status_hide()
 
     def on_batch_page_started(self, page):
         """دنبال‌کردن زنده: صفحهٔ در حال ترجمه نمایش داده می‌شود.

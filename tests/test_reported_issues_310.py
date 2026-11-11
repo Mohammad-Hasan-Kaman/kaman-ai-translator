@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import kaman_core as core
 import translator_app_v3 as ui
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QThread, Qt
 from PyQt6.QtWidgets import QApplication, QLabel
 
 
@@ -340,6 +340,40 @@ class ReportedIssueTests(unittest.TestCase):
         self.assertEqual(window.btn_copy.text(), ui.STRINGS["fa"]["copied"])
         window._restore_copy_label()
         self.assertEqual(window.btn_copy.text(), ui.STRINGS["fa"]["copy"])
+        window.close()
+
+    def test_status_bar_hides_when_idle(self):
+        # v3.2.2: the status bar must not stay on screen forever; once
+        # nothing is running it hides again (the copy feedback test above
+        # still requires it to be visible right after the action).
+        cfg = dict(core.CONFIG_DEFAULTS, theme="light", ui_lang="fa")
+        ui.set_ui_lang("fa")
+        window = ui.ModernTranslatorApp()
+        window.cfg = cfg
+        window._show_status("پیام آزمایشی")
+        self.assertFalse(window._status_frame.isHidden())
+        window._hide_status_if_idle()
+        self.assertTrue(window._status_frame.isHidden())
+        window.close()
+
+    def test_status_bar_stays_while_worker_runs(self):
+        cfg = dict(core.CONFIG_DEFAULTS, theme="light", ui_lang="fa")
+        ui.set_ui_lang("fa")
+        window = ui.ModernTranslatorApp()
+        window.cfg = cfg
+        thread = QThread()
+        thread.start()
+        try:
+            window.single_worker = thread
+            window._show_status("در حال ترجمه")
+            window._hide_status_if_idle()
+            self.assertFalse(window._status_frame.isHidden())
+        finally:
+            window.single_worker = None
+            thread.quit()
+            thread.wait()
+        window._hide_status_if_idle()
+        self.assertTrue(window._status_frame.isHidden())
         window.close()
 
     def test_export_labels_follow_target_language(self):

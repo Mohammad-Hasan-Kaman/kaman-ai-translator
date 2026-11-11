@@ -25,7 +25,7 @@ from collections import Counter
 import pymupdf  # PyMuPDF (نام جدید؛ fitz فقط نام قدیمی است و هشدار می‌دهد)
 
 APP_NAME = "kaman-ai-translator"
-APP_VERSION = "3.2.1"
+APP_VERSION = "3.2.2"
 
 # --------------------------------------------------------------------------
 # خطاهای قابل تشخیص
