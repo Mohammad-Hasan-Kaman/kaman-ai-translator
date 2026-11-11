@@ -435,7 +435,7 @@ except k.TranslationError:
 
 print("== K. UI: پنجره، فایل، نمایش ذخیره‌شده، بازبینی، نمای مبدأ ==")
 win = t3.ModernTranslatorApp()
-check("window title v3", "3.2.1" in win.windowTitle())
+check("window title v3", "3.2.2" in win.windowTitle())
 
 win.doc = pymupdf.open(pdf1)
 win.current_file = pdf1
