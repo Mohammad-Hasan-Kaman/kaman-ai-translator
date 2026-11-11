@@ -195,7 +195,7 @@ The UI runs on `QThread` workers — translation, structure analysis and exports
 
 ### Option A — Windows executable (recommended)
 
-Download `kaman-ai-translator-3.2.2.exe` from the [latest release](../../releases/latest) and run it. No Python required.
+Download `kaman-ai-translator-3.2.2-setup.exe` (the Windows installer) from the [latest release](../../releases/latest) and run it. No Python required.
 
 ### Option B — Run from source
 
