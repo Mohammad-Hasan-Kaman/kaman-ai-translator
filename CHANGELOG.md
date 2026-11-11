@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-11-11
+
+### Fixed
+
+- UI language switching is now complete in both directions: the hint under
+  the language selectors and the progress percent follow the UI language,
+  and every engine error message (Gemini quota / API / safety-guard /
+  no-response, local-server quota / HTTP / connection failures, model
+  discovery, saved-key decryption) is written in the selected UI language
+  instead of hardcoded Persian.
+- Light theme readability: stronger borders, darker secondary labels and
+  hints, and disabled controls that stay legible instead of washed out.
+- The Copy button now confirms visibly: the status bar appears with a
+  "Copied" message and the button itself shows "Copied" for a moment, so
+  there is no need to click repeatedly to be sure.
+- HTML export is a single self-contained file: page images are embedded
+  in the HTML (compressed JPEG) instead of a separate `images/` folder
+  that broke as soon as the file was moved or sent on its own.
+- Export headings and page labels (TXT / Markdown / HTML) now follow the
+  translation's target language rather than always being Persian.
+- Save failures are no longer silent: all three export actions report
+  write errors in a dialog, the current-page TXT export has the same
+  busy guard as the other exports, and HTML export creates the output
+  folder when it does not exist yet.
+
 ## [3.2.0] - 2026-11-10
 
 ### Changed

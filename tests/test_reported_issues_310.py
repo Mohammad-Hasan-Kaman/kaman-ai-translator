@@ -289,6 +289,82 @@ class ReportedIssueTests(unittest.TestCase):
         self.assertEqual(called_models, ["gemini-3.8-flash"] * 4 + ["gemini-3.6-flash"])
         self.assertEqual(engine.last_used_model, "gemini-3.6-flash")
 
+    # ---- v3.2.1: گزارش‌های تست کاربر روی v3.2.0 ----
+
+    def test_language_change_also_updates_direction_hint(self):
+        cfg = dict(core.CONFIG_DEFAULTS, theme="light", ui_lang="fa")
+        ui.set_ui_lang("fa")
+        window = ui.ModernTranslatorApp()
+        window.cfg = cfg
+        self.assertEqual(window.lbl_lang_hint.text(), ui.STRINGS["fa"]["lang_hint"])
+        window.on_settings_saved(dict(cfg, ui_lang="en"))
+        self.assertEqual(window.lbl_lang_hint.text(), ui.STRINGS["en"]["lang_hint"])
+        window.on_settings_saved(dict(cfg, ui_lang="fa"))
+        self.assertEqual(window.lbl_lang_hint.text(), ui.STRINGS["fa"]["lang_hint"])
+        window.close()
+        ui.set_ui_lang("fa")
+
+    def test_core_error_messages_follow_ui_language(self):
+        import re
+
+        fa_re = re.compile(r"[\u0600-\u06FF]")
+        keys = (
+            "gemini_quota", "gemini_api_error", "gemini_error",
+            "gemini_recitation", "gemini_no_response", "server_quota",
+            "server_http_error", "server_connect_failed", "model_list_failed",
+            "model_none_returned", "key_decrypt_failed",
+        )
+        core.set_language("en")
+        try:
+            for key in keys:
+                text = core.msg(key, code=500, detail="d", url="u")
+                self.assertFalse(fa_re.search(text), f"{key} not English: {text}")
+        finally:
+            core.set_language("fa")
+        for key in keys:
+            text = core.msg(key, code=500, detail="d", url="u")
+            self.assertTrue(fa_re.search(text), f"{key} not Persian: {text}")
+
+    def test_copy_shows_visible_feedback(self):
+        cfg = dict(core.CONFIG_DEFAULTS, theme="light", ui_lang="fa")
+        ui.set_ui_lang("fa")
+        window = ui.ModernTranslatorApp()
+        window.cfg = cfg
+        window.txt_output.setText("متن ترجمه‌شده")
+        window.copy_translation()
+        self.assertEqual(
+            QApplication.clipboard().text(), "متن ترجمه‌شده"
+        )
+        self.assertFalse(window._status_frame.isHidden())
+        self.assertEqual(window.lbl_status.text(), ui.STRINGS["fa"]["copied"])
+        self.assertEqual(window.btn_copy.text(), ui.STRINGS["fa"]["copied"])
+        window._restore_copy_label()
+        self.assertEqual(window.btn_copy.text(), ui.STRINGS["fa"]["copy"])
+        window.close()
+
+    def test_export_labels_follow_target_language(self):
+        with tempfile.TemporaryDirectory(dir=_TEST_HOME) as folder:
+            src = os.path.join(folder, "book.pdf")
+            with open(src, "wb") as fh:
+                fh.write(b"source")
+            job = core.JobStore(src)
+            job.set(0, "Hello")
+
+            txt_en = os.path.join(folder, "page_en.txt")
+            core.export_page_text("Hello", "book.pdf", 0, txt_en,
+                                  direction="fa2en")
+            en_text = open(txt_en, encoding="utf-8-sig").read()
+            self.assertIn("Translation of book.pdf", en_text)
+            self.assertIn("Page 1", en_text)
+
+            md_en = os.path.join(folder, "book_en.md")
+            core.export_markdown(job, "book.pdf", md_en, direction="fa2en")
+            self.assertIn("## Page 1", open(md_en, encoding="utf-8").read())
+
+            md_fa = os.path.join(folder, "book_fa.md")
+            core.export_markdown(job, "book.pdf", md_fa)
+            self.assertIn("## صفحهٔ 1", open(md_fa, encoding="utf-8").read())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

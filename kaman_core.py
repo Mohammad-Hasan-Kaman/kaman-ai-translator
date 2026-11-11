@@ -25,7 +25,7 @@ from collections import Counter
 import pymupdf  # PyMuPDF (نام جدید؛ fitz فقط نام قدیمی است و هشدار می‌دهد)
 
 APP_NAME = "kaman-ai-translator"
-APP_VERSION = "3.2.0"
+APP_VERSION = "3.2.1"
 
 # --------------------------------------------------------------------------
 # خطاهای قابل تشخیص
@@ -108,6 +108,17 @@ _MSGS = {
         "gemini_blocked": "Google پاسخ Gemini را به‌دلیل فیلتر ایمنی رد کرد ({reason}). متن مبدأ را بررسی کنید یا از مدلی/سرویسی استفاده کنید که این محتوای کتاب را می‌پذیرد.",
         "gemini_network_error": "ارتباط با Google Gemini برقرار نشد یا بیش از حد طول کشید. اینترنت، پراکسی/فایروال و دسترسی منطقه‌ای را بررسی کنید. اگر از IP ایران استفاده می‌کنید، ممکن است محدودیت دسترسی Google دخیل باشد. جزئیات: {detail}",
         "gemini_fallback": "مدل پیش‌فرض شلوغ بود؛ اتصال با مدل جایگزین {model} موفق شد.",
+        "gemini_quota": "سهمیه یا محدودیت نرخ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید.",
+        "gemini_api_error": "خطای API جمینای ({code}): {detail}",
+        "gemini_error": "خطای API جمینای: {detail}",
+        "gemini_recitation": "مدل به دلیل گارد کپی‌رایت (finish_reason=RECITATION) پاسخی برنگرداند. این بخش برای بازبینی دستی علامت‌گذاری شد.",
+        "gemini_no_response": "پاسخی از سرور جمینای دریافت نشد.",
+        "server_quota": "سرور درخواست‌ها را محدود کرد (429):\n{detail}",
+        "server_http_error": "خطای HTTP {code} از سرور:\n{detail}",
+        "server_connect_failed": "اتصال به سرور برقرار نشد ({url}):\n{detail}",
+        "model_list_failed": "دریافت فهرست مدل‌ها از {url} ممکن نشد: {detail}",
+        "model_none_returned": "سرور هیچ شناسهٔ مدلی برنگرداند ({url}). یک مدل روی سرور بارگذاری یا انتخاب کنید، یا شناسه‌اش را در تنظیمات وارد کنید.",
+        "key_decrypt_failed": "بازگردانی کلید API رمزنگاری‌شده شکست خورد (احتمالاً کلید روی حساب کاربری دیگری ذخیره شده است):\n{detail}",
         "legacy_job_archived": "{n} ترجمهٔ ذخیره‌شده از نسخهٔ قدیمی زبان مقصد مشخصی نداشت؛ برای جلوگیری از نمایش ترجمه با زبان اشتباه، نگه‌داری شد اما برای این زبان دوباره ترجمه می‌شود.",
     },
     "en": {
@@ -158,6 +169,17 @@ _MSGS = {
         "gemini_blocked": "Google blocked the Gemini response with a safety filter ({reason}). Review the source passage or use a model/service that permits this book content.",
         "gemini_network_error": "Could not reach Google Gemini before the request timed out. Check your internet connection, proxy/firewall, and regional availability. If you are using an Iran IP, Google access restrictions may be involved. Details: {detail}",
         "gemini_fallback": "The default model was busy; connection succeeded with fallback model {model}.",
+        "gemini_quota": "Google API quota or rate limit reached (error 429). Wait a bit, then resume.",
+        "gemini_api_error": "Gemini API error ({code}): {detail}",
+        "gemini_error": "Gemini API error: {detail}",
+        "gemini_recitation": "The model returned no text because of the copyright guard (finish_reason=RECITATION). This section was marked for manual review.",
+        "gemini_no_response": "No response was received from the Gemini server.",
+        "server_quota": "The server rate-limited the requests (429):\n{detail}",
+        "server_http_error": "HTTP {code} error from the server:\n{detail}",
+        "server_connect_failed": "Could not connect to the server ({url}):\n{detail}",
+        "model_list_failed": "Could not list models from {url}: {detail}",
+        "model_none_returned": "The server returned no model IDs at {url}. Load/select a model on the server or enter its ID in Settings.",
+        "key_decrypt_failed": "Failed to decrypt the saved API key (it was probably stored under a different user account):\n{detail}",
         "legacy_job_archived": "{n} saved page translations from an older version had no target-language metadata. They were preserved, but this language will be translated again to prevent mixing languages.",
     },
 }
@@ -278,10 +300,7 @@ def decrypt_secret(stored: str) -> str:
         if stored.startswith(_PREFIX_B64):
             return base64.b64decode(stored[len(_PREFIX_B64):]).decode("utf-8")
     except Exception as exc:
-        raise TranslationError(
-            "بازگردانی کلید API رمزنگاری‌شده شکست خورد (احتمالاً کلید روی حساب کاربری "
-            f"دیگری ذخیره شده است):\n{exc}"
-        )
+        raise TranslationError(msg("key_decrypt_failed", detail=exc))
     return stored  # قالب قدیمی: متن ساده
 
 
@@ -1334,9 +1353,7 @@ class GeminiEngine(BaseEngine):
                         if model_index + 1 < len(models):
                             try_next_model = True
                             break
-                        raise QuotaExhaustedError(
-                            "سهمیه یا محدودیت نرخ API گوگل پر شد (خطای 429). کمی بعد دوباره ادامه دهید."
-                        ) from err
+                        raise QuotaExhaustedError(msg("gemini_quota")) from err
                     if err.code in (500, 502, 503, 504):
                         if model_index + 1 < len(models):
                             try_next_model = True
@@ -1346,7 +1363,9 @@ class GeminiEngine(BaseEngine):
                         ) from err
                     if code in ("400", "401", "403", "404"):
                         raise TranslationError(msg("gemini_http_error", code=code, detail=detail)) from err
-                    raise TranslationError(f"خطای API جمینای ({err.code}): {err}") from err
+                    raise TranslationError(
+                        msg("gemini_api_error", code=err.code, detail=err)
+                    ) from err
                 except Exception as err:  # noqa: BLE001
                     last_err = err
                     if attempt < 3:
@@ -1361,7 +1380,7 @@ class GeminiEngine(BaseEngine):
                     ) from err
             if try_next_model:
                 continue
-        raise TranslationError(f"خطای API جمینای: {last_err}")
+        raise TranslationError(msg("gemini_error", detail=last_err))
 
     def test(self):
         ok, message = super().test()
@@ -1393,10 +1412,7 @@ class GeminiEngine(BaseEngine):
             response = self._call(retry_prompt, system, json_mode)
             raw = response_text(response)
             if not raw:
-                raise TranslationError(
-                    "مدل به دلیل گارد کپی‌رایت (finish_reason=RECITATION) پاسخی برنگرداند. "
-                    "این بخش برای بازبینی دستی علامت‌گذاری شد."
-                )
+                raise TranslationError(msg("gemini_recitation"))
         finish = (finish_reason_name(response) or "").upper()
         if "MAX_TOKENS" in finish:
             raise TranslationError(msg("truncated_error"))
@@ -1405,7 +1421,7 @@ class GeminiEngine(BaseEngine):
         )):
             raise TranslationError(msg("gemini_blocked", reason=finish))
         if not raw:
-            raise TranslationError("پاسخی از سرور جمینای دریافت نشد.")
+            raise TranslationError(msg("gemini_no_response"))
         return raw
 
 
@@ -1434,7 +1450,7 @@ class OpenAICompatEngine(BaseEngine):
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
             raise TranslationError(
                 f"{msg('model_not_set')}\n{msg('model_empty')}\n"
-                f"Could not list models from {url}: {exc}"
+                f"{msg('model_list_failed', url=url, detail=exc)}"
             ) from exc
         items = payload.get("data", []) if isinstance(payload, dict) else []
         if not items and isinstance(payload, dict):
@@ -1450,8 +1466,7 @@ class OpenAICompatEngine(BaseEngine):
                     break
         if not self.model:
             raise TranslationError(
-                f"{msg('model_not_set')}\nThe server returned no model IDs at {url}. "
-                "Load/select a model on the server or enter its ID in Settings."
+                f"{msg('model_not_set')}\n{msg('model_none_returned', url=url)}"
             )
         return self.model
 
@@ -1481,14 +1496,16 @@ class OpenAICompatEngine(BaseEngine):
                     pass
                 if exc.code == 429 and attempt == 3:
                     raise QuotaExhaustedError(
-                        f"سرور درخواست‌ها را محدود کرد (429):\n{body}"
+                        msg("server_quota", detail=body)
                     ) from exc
                 if exc.code in (429, 500, 502, 503) and attempt < 3:
                     time.sleep(delay)
                     delay *= 2
                     last_error = exc
                     continue
-                raise TranslationError(f"خطای HTTP {exc.code} از سرور:\n{body}") from exc
+                raise TranslationError(
+                    msg("server_http_error", code=exc.code, detail=body)
+                ) from exc
             except urllib.error.URLError as exc:
                 last_error = exc
                 if attempt < 3:
@@ -1496,7 +1513,7 @@ class OpenAICompatEngine(BaseEngine):
                     delay *= 2
                     continue
                 raise TranslationError(
-                    f"اتصال به سرور برقرار نشد ({self.base_url}):\n{exc.reason}"
+                    msg("server_connect_failed", url=self.base_url, detail=exc.reason)
                 ) from exc
             except TimeoutError as exc:
                 last_error = exc
@@ -2094,16 +2111,35 @@ class JobStore:
 # خروجی کتاب
 # --------------------------------------------------------------------------
 
-def export_page_text(text, source_name, page, path):
-    header = f"ترجمهٔ {source_name} — صفحهٔ {page + 1}\n" + "=" * 40 + "\n\n"
+# برچسب‌های خروجی (عنوان و شمارهٔ صفحه) به زبان مقصد ترجمه نوشته می‌شوند،
+# نه به زبان رابط کاربری: کتابی که مقصدش انگلیسی است، سرفصل انگلیسی می‌گیرد.
+_EXPORT_LABELS = {
+    "fa": {"doc_title": "ترجمهٔ {name}", "page": "صفحهٔ {n}", "page_rule": "— صفحهٔ {n} —"},
+    "en": {"doc_title": "Translation of {name}", "page": "Page {n}", "page_rule": "— Page {n} —"},
+    "ar": {"doc_title": "ترجمة {name}", "page": "صفحة {n}", "page_rule": "— صفحة {n} —"},
+}
+
+
+def _export_labels(direction):
+    lang = direction.split("2")[-1] if direction and "2" in direction else "fa"
+    return _EXPORT_LABELS.get(lang, _EXPORT_LABELS["fa"])
+
+
+def export_page_text(text, source_name, page, path, direction="en2fa"):
+    labels = _export_labels(direction)
+    header = (
+        f"{labels['doc_title'].format(name=source_name)}"
+        f" — {labels['page'].format(n=page + 1)}\n" + "=" * 40 + "\n\n"
+    )
     with open(path, "w", encoding="utf-8-sig") as fh:
         fh.write(header + text + "\n")
 
 
-def export_markdown(job, source_name, path):
-    lines = [f"# ترجمهٔ {source_name}", ""]
+def export_markdown(job, source_name, path, direction="en2fa"):
+    labels = _export_labels(direction)
+    lines = [f"# {labels['doc_title'].format(name=source_name)}", ""]
     for page in job.ordered_pages():
-        lines.append(f"## صفحهٔ {page + 1}")
+        lines.append(f"## {labels['page'].format(n=page + 1)}")
         lines.append("")
         lines.append(job.get(page) or "")
         lines.append("")
@@ -2111,30 +2147,47 @@ def export_markdown(job, source_name, path):
         fh.write("\n".join(lines))
 
 
-def export_html(job, doc, source_name, out_dir, direction="en2fa"):
-    """کتاب کامل HTML + تصاویر صفحات (قابل چاپ / ذخیره به‌صورت PDF).
+def _page_image_data_uri(doc, page):
+    """تصویر صفحه به‌صورت data URI (JPEG فشرده) تا فایل HTML تک‌فایل و مستقل بماند.
 
+    قبلاً تصاویر در پوشهٔ images/ جدا ذخیره می‌شدند و با جابه‌جایی index.html
+    همهٔ تصاویر می‌شکستند؛ حالا خود فایل HTML همه‌چیز را در بر دارد."""
+    pix = doc.load_page(page).get_pixmap(matrix=pymupdf.Matrix(1.3, 1.3))
+    if pix.alpha:
+        pix = pymupdf.Pixmap(pix, 0)
+    try:
+        raw = pix.tobytes("jpg", jpg_quality=78)
+        mime = "image/jpeg"
+    except Exception:
+        raw = pix.tobytes("png")
+        mime = "image/png"
+    return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
+
+
+def export_html(job, doc, source_name, out_dir, direction="en2fa"):
+    """کتاب کامل HTML با تصاویر توکار (قابل چاپ / ذخیره به‌صورت PDF).
+
+    خروجی فقط یک فایل index.html است و تصاویر صفحات داخل خودش قرار می‌گیرند.
     جهت و زبان سند از زبان مقصد ترجمه پیروی می‌کند (مقصد انگلیسی → LTR)."""
     d = DIRECTIONS.get(direction, DIRECTIONS["en2fa"])
     dir_attr = "rtl" if d.get("rtl", True) else "ltr"
     lang = direction.split("2")[-1] if "2" in direction else "fa"
-    images_dir = os.path.join(out_dir, "images")
-    os.makedirs(images_dir, exist_ok=True)
+    labels = _export_labels(direction)
+    os.makedirs(out_dir, exist_ok=True)
 
     sections = []
     for page in job.ordered_pages():
         text = job.get(page) or ""
         img_tag = ""
         try:
-            pix = doc.load_page(page).get_pixmap(matrix=pymupdf.Matrix(1.3, 1.3))
-            img_name = f"page_{page + 1:04d}.png"
-            pix.save(os.path.join(images_dir, img_name))
-            img_tag = f'<img class="page-img" src="images/{img_name}" alt="صفحهٔ {page + 1}">'
+            uri = _page_image_data_uri(doc, page)
+            alt = labels["page"].format(n=page + 1)
+            img_tag = f'<img class="page-img" src="{uri}" alt="{alt}">'
         except Exception:
             img_tag = ""
         sections.append(
             f'<section id="page-{page + 1}">'
-            f'<div class="page-num">— صفحهٔ {page + 1} —</div>'
+            f'<div class="page-num">{labels["page_rule"].format(n=page + 1)}</div>'
             f'<div class="translation">{html_mod.escape(text)}</div>'
             f"{img_tag}"
             f"</section>"
@@ -2144,7 +2197,7 @@ def export_html(job, doc, source_name, out_dir, direction="en2fa"):
 <html dir="{dir_attr}" lang="{lang}">
 <head>
 <meta charset="utf-8">
-<title>ترجمهٔ {html_mod.escape(source_name)}</title>
+<title>{html_mod.escape(labels['doc_title'].format(name=source_name))}</title>
 <style>
   body {{ font-family: "Vazirmatn", "Tahoma", "Segoe UI", sans-serif; direction: {dir_attr};
          line-height: 1.9; max-width: 860px; margin: 0 auto; padding: 24px;
@@ -2158,7 +2211,7 @@ def export_html(job, doc, source_name, out_dir, direction="en2fa"):
 </style>
 </head>
 <body>
-<h1>ترجمهٔ {html_mod.escape(source_name)}</h1>
+<h1>{html_mod.escape(labels['doc_title'].format(name=source_name))}</h1>
 {chr(10).join(sections)}
 </body>
 </html>

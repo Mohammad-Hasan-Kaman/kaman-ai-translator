@@ -334,7 +334,9 @@ index_path = k.export_html(html_job, doc1, "book1.pdf", html_out)
 html_text = open(index_path, encoding="utf-8").read()
 check("html rtl", 'dir="rtl"' in html_text)
 check("html escapes content", "&lt;script&gt;" in html_text)
-check("html image exported", os.path.exists(os.path.join(html_out, "images", "page_0001.png")))
+check("html image embedded in the single file", 'src="data:image/' in html_text)
+check("html export creates no side images folder",
+      not os.path.exists(os.path.join(html_out, "images")))
 
 print("== J. موتور سازگار با OpenAI (سرور محلی شبیه‌سازی‌شده) ==")
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer  # noqa: E402
@@ -433,7 +435,7 @@ except k.TranslationError:
 
 print("== K. UI: پنجره، فایل، نمایش ذخیره‌شده، بازبینی، نمای مبدأ ==")
 win = t3.ModernTranslatorApp()
-check("window title v3", "3.2.0" in win.windowTitle())
+check("window title v3", "3.2.1" in win.windowTitle())
 
 win.doc = pymupdf.open(pdf1)
 win.current_file = pdf1
