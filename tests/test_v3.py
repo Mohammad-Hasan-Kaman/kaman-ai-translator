@@ -346,7 +346,7 @@ class MockHandler(BaseHTTPRequestHandler):
     reject_rf = False   # شبیه‌سازی سروری که response_format را پشتیبانی نمی‌کند
 
     def do_GET(self):
-        body = json.dumps({"data": [{"id": "auto-discovered-model"}]}).encode("utf-8")
+        body = json.dumps({"data": [{"id": "auto-discovered-model", "capabilities": {"chat": True}}]}).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -411,7 +411,7 @@ check("image sent as data url",
 
 auto_engine = k.OpenAICompatEngine(f"http://127.0.0.1:{port}/v1", "k", "")
 auto_engine.generate("x")
-check("empty model discovers first server model",
+check("empty model discovers explicitly chat-capable server model",
       auto_engine.model == "auto-discovered-model")
 
 server.shutdown()

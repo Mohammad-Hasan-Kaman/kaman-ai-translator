@@ -118,6 +118,7 @@ _MSGS = {
         "server_connect_failed": "اتصال به سرور برقرار نشد ({url}):\n{detail}",
         "model_list_failed": "دریافت فهرست مدل‌ها از {url} ممکن نشد: {detail}",
         "model_none_returned": "سرور هیچ شناسهٔ مدلی برنگرداند ({url}). یک مدل روی سرور بارگذاری یا انتخاب کنید، یا شناسه‌اش را در تنظیمات وارد کنید.",
+        "model_chat_not_identified": "فهرست سرور قابلیت گفت‌وگوی هیچ مدلی را مشخص نمی‌کند. شناسهٔ مدل مناسب گفت‌وگو را در تنظیمات → مدل وارد کنید؛ انتخاب خودکار انجام نشد.",
         "key_decrypt_failed": "بازگردانی کلید API رمزنگاری‌شده شکست خورد (احتمالاً کلید روی حساب کاربری دیگری ذخیره شده است):\n{detail}",
         "legacy_job_archived": "{n} ترجمهٔ ذخیره‌شده از نسخهٔ قدیمی زبان مقصد مشخصی نداشت؛ برای جلوگیری از نمایش ترجمه با زبان اشتباه، نگه‌داری شد اما برای این زبان دوباره ترجمه می‌شود.",
     },
@@ -179,6 +180,7 @@ _MSGS = {
         "server_connect_failed": "Could not connect to the server ({url}):\n{detail}",
         "model_list_failed": "Could not list models from {url}: {detail}",
         "model_none_returned": "The server returned no model IDs at {url}. Load/select a model on the server or enter its ID in Settings.",
+        "model_chat_not_identified": "No model in the server catalog has explicit chat capability metadata. Enter a chat-capable model ID in Settings -> Model; no model was selected automatically.",
         "key_decrypt_failed": "Failed to decrypt the saved API key (it was probably stored under a different user account):\n{detail}",
         "legacy_job_archived": "{n} saved page translations from an older version had no target-language metadata. They were preserved, but this language will be translated again to prevent mixing languages.",
     },
@@ -1436,8 +1438,25 @@ class OpenAICompatEngine(BaseEngine):
         self.model = model or ""
         self.temperature = float(temperature)
 
+    @staticmethod
+    def _has_chat_capability(item):
+        """Recognize explicit optional chat metadata, never infer it from an ID."""
+        capabilities = item.get("capabilities")
+        if isinstance(capabilities, dict):
+            if capabilities.get("chat") is False:
+                return False
+            if capabilities.get("chat") is True:
+                return True
+        elif isinstance(capabilities, list) and "chat" in capabilities:
+            return True
+        endpoints = item.get("supported_endpoints")
+        return isinstance(endpoints, list) and any(
+            endpoint in ("/v1/chat/completions", "/chat/completions")
+            for endpoint in endpoints
+        )
+
     def _discover_model(self):
-        """Use the server's first advertised model when the user left Model blank."""
+        """Select the first explicitly chat-capable model, or require manual entry."""
         if self.model:
             return self.model
         url = f"{self.base_url}/models"
@@ -1455,20 +1474,27 @@ class OpenAICompatEngine(BaseEngine):
         items = payload.get("data", []) if isinstance(payload, dict) else []
         if not items and isinstance(payload, dict):
             items = payload.get("models", [])
+        if not isinstance(items, list):
+            items = []
+        has_model_id = False
         for item in items:
-            if isinstance(item, str) and item.strip():
-                self.model = item.strip()
-                break
-            if isinstance(item, dict):
-                candidate = item.get("id") or item.get("name")
-                if isinstance(candidate, str) and candidate.strip():
-                    self.model = candidate.strip()
-                    break
-        if not self.model:
-            raise TranslationError(
-                f"{msg('model_not_set')}\n{msg('model_none_returned', url=url)}"
-            )
-        return self.model
+            if isinstance(item, str):
+                has_model_id = has_model_id or bool(item.strip())
+                continue
+            if not isinstance(item, dict):
+                continue
+            candidate = item.get("id") or item.get("name")
+            if not isinstance(candidate, str) or not candidate.strip():
+                continue
+            has_model_id = True
+            if self._has_chat_capability(item):
+                self.model = candidate.strip()
+                return self.model
+        if has_model_id:
+            raise TranslationError(msg("model_chat_not_identified"))
+        raise TranslationError(
+            f"{msg('model_not_set')}\n{msg('model_none_returned', url=url)}"
+        )
 
     def _post(self, payload, timeout=600):
         url = f"{self.base_url}/chat/completions"
