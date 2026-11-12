@@ -115,7 +115,7 @@ The translator also works fully offline against a local OpenAI-compatible server
 | Engine | OpenAI-compatible | OpenAI-compatible |
 | Base URL | `http://localhost:11434/v1` | `http://localhost:1234/v1` |
 | API Key | `ollama` (placeholder) | `lm-studio` (placeholder) |
-| Model | A model you pulled, e.g. `llama3.1`; leave blank to discover the first model advertised by the server | The loaded model's id; leave blank to discover the first model advertised by the server |
+| Model | A model you pulled, e.g. `llama3.1`; leave blank only if the server advertises explicit chat capability metadata | The loaded model's id; leave blank only if the server advertises explicit chat capability metadata |
 
 - **LM Studio:** load a model, then start the server from the **Developer** tab before connecting.
 - **The API key is a placeholder for these two servers.** By default, Ollama and LM Studio do not authenticate local requests, so the key is never checked — it only has to be non-empty, because the OpenAI client requires one.
@@ -123,6 +123,25 @@ The translator also works fully offline against a local OpenAI-compatible server
 - **Raise the context window (Ollama).** Ollama allocates a small context by default (4,096 tokens on machines with less than 24 GiB of VRAM), and long prompts are truncated silently — a book chunk plus its context tail easily overflows it, which surfaces as invalid-JSON translation errors. The OpenAI-compatible API has no context-size field, so raise it on the Ollama side: set `OLLAMA_CONTEXT_LENGTH=16384` before starting the server, or bake it into a custom model with a Modelfile (`FROM <model>` plus `PARAMETER num_ctx 16384`, then `ollama create <name> -f Modelfile`) and use that model name in Settings.
 
 Press **Test connection** after entering the values; a success report means the local model is reachable and ready.
+
+#### Automatic model selection
+
+An explicitly entered **Model** always wins and skips discovery. With Model blank,
+the app selects the first catalog entry that explicitly advertises chat support:
+`capabilities: {"chat": true}`, `capabilities: ["chat", ...]`, or
+`supported_endpoints: ["/v1/chat/completions", ...]` (also accepts
+`"/chat/completions"`). `capabilities.chat: false` prevents automatic selection.
+These are optional server metadata conventions, not required OpenAI fields.
+Entries may use `id` or `name`, in the existing `data` or `models` list.
+
+If the catalog only lists IDs, has no known chat-capable entry, or contains only
+embedding/speech/image models, discovery stops with an actionable message.
+Enter the exact chat model ID in **Settings -> Model**, then use **Test connection**.
+This also applies to local servers that omit capability metadata. The app never
+guesses capability from a model name, probes models by sending translation text,
+or falls back to the first unknown entry. Chat metadata does not guarantee JSON
+output, translation quality, or vision support; Test connection still checks the
+selected model's structured output separately.
 
 ### 4. Security
 
@@ -210,7 +229,7 @@ python translator_app_v3.py
 
 ## Quick start
 
-1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, optionally set the model name (blank uses Gemini's default or discovers a server model), then press **Test connection**.
+1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, optionally set the model name (blank uses Gemini's default or discovers an explicitly chat-capable server model), then press **Test connection**.
 2. **📂 Open book (PDF / EPUB)** → open your book.
 3. **Single page:** *Translate this page* · **Whole book:** *Translate the whole book* and in the dialog:
    - choose the page range,
@@ -240,7 +259,7 @@ Google AI Studio is available only in supported regions. If the page does not op
 | Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
 | Base URL | OpenAI-compatible endpoint, or an optional Gemini-native API gateway URL for Gemini. |
 | Gemini proxy | Optional HTTP(S) network proxy for Gemini (for example `http://127.0.0.1:7890`). If blank, the SDK uses the system `HTTPS_PROXY` setting. |
-| Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default or automatic discovery from an OpenAI-compatible server. |
+| Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default or automatic discovery of an explicitly chat-capable model from an OpenAI-compatible server; otherwise enter the chat model ID. |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
 | App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |
 | Theme | System / Dark / Light. |
@@ -283,11 +302,13 @@ pyinstaller --noconfirm --clean --onefile --windowed `
 
 ## Testing
 
-The suite is **fully offline** — fake engines, temporary profiles, no network, no API key:
+The suite is **fully offline** — fake engines, temporary profiles, loopback HTTP fixtures, no external network or API key:
 
 ```bash
 python tests/test_v3.py
 # expected: ALL V3 TESTS PASSED  (323 checks)
+python tests/test_model_discovery.py
+# focused catalog selection and explicit-model override regressions
 ```
 
 Covered: prompts & JSON parsing, chunking and context rolling, structure detection & template merging, header/footer removal, job store resume/restart, RTL geometry of every screen, the batch UI state machine (pause/cancel/settings-while-paused), exports, and the encrypted-config round-trip.
