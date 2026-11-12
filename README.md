@@ -233,7 +233,7 @@ python translator_app_v3.py
 
 ## Quick start
 
-1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, optionally set the model name (blank uses Gemini's default or discovers an explicitly chat-capable server model), then press **Test connection**.
+1. **⚙️ Settings** → pick the engine (Gemini or OpenAI-compatible), paste your API key, optionally set the model name (blank uses Gemini's default or discovers a server model - see **Automatic model selection**), then press **Test connection**.
 2. **📂 Open book (PDF / EPUB)** → open your book.
 3. **Single page:** *Translate this page* · **Whole book:** *Translate the whole book* and in the dialog:
    - choose the page range,
@@ -263,7 +263,7 @@ Google AI Studio is available only in supported regions. If the page does not op
 | Engine | Google Gemini, or any OpenAI-compatible server (local or cloud). |
 | Base URL | OpenAI-compatible endpoint, or an optional Gemini-native API gateway URL for Gemini. |
 | Gemini proxy | Optional HTTP(S) network proxy for Gemini (for example `http://127.0.0.1:7890`). If blank, the SDK uses the system `HTTPS_PROXY` setting. |
-| Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default or automatic discovery of an explicitly chat-capable model from an OpenAI-compatible server; otherwise enter the chat model ID. |
+| Model | Model name, e.g. `gemini-3.8-flash` or a local model id. Leave blank for Gemini's default, or for automatic discovery from an OpenAI-compatible server (see **Automatic model selection**: capability metadata decides when a server sends it; metadata-less local servers keep the first advertised model). |
 | API Key | Stored encrypted with Windows DPAPI; masked in the UI. |
 | App language | Persian or English; interface text and RTL/LTR layout update immediately after saving. |
 | Theme | System / Dark / Light. |
