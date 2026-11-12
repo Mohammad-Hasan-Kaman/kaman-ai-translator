@@ -5,6 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2026-11-12
+
+### Fixed
+
+- OpenAI-compatible model discovery no longer takes the first advertised
+  model blindly when a server reports capability metadata: on a
+  multi-purpose gateway that lists embedding, speech or image models
+  first, the translator could pick a non-chat model and fail
+  mid-translation with a confusing error. Discovery now selects the first
+  explicitly chat-capable model, and when no entry can be identified as
+  chat-capable it stops with a clear message (English/Persian) asking for
+  the exact model ID in **Settings -> Model** instead.
+  (Report and implementation contributed by @yibeibingmrishi in #1 / #2.)
+
+### Changed
+
+- Model discovery policy: explicit chat-capability metadata decides when
+  a catalog carries any. Catalogs with no capability metadata at all -
+  the norm for local servers such as Ollama and LM Studio - keep the
+  historical behavior of selecting the first advertised model, so local
+  setups with a blank Model field work exactly as before.
+
 ## [3.2.2] - 2026-11-11
 
 ### Fixed

@@ -1,4 +1,4 @@
-![Kaman AI Translator v3.2.2 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
+![Kaman AI Translator v3.2.3 – مترجم هوشمند کتاب](assets/translator-banner.jpg)
 
 ### 🌐 Telegram: [@mohaka_programmer](https://t.me/mohaka_programmer)
 
@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/python-3.11%2B-orange?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/UI-PyQt6%20·%20FA%2FEN-3b82f6" alt="UI: PyQt6, Persian/English">
-  <img src="https://img.shields.io/badge/tests-347%20offline%20checks-brightgreen" alt="347 offline tests">
+  <img src="https://img.shields.io/badge/tests-365%20offline%20checks-brightgreen" alt="365 offline tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
@@ -218,7 +218,7 @@ The UI runs on `QThread` workers — translation, structure analysis and exports
 
 ### Option A — Windows executable (recommended)
 
-Download `kaman-ai-translator-3.2.2-setup.exe` (the Windows installer) from the [latest release](../../releases/latest) and run it. No Python required.
+Download `kaman-ai-translator-3.2.3-setup.exe` (the Windows installer) from the [latest release](../../releases/latest) and run it. No Python required.
 
 ### Option B — Run from source
 
@@ -292,7 +292,7 @@ pyinstaller --noconfirm --clean --onefile --windowed `
   --add-data "icon.png;." `
   --collect-data google.genai `
   --collect-all pydantic --collect-all pydantic_core `
-  --name kaman-ai-translator-3.2.2 `
+  --name kaman-ai-translator-3.2.3 `
   translator_app_v3.py
 ```
 
