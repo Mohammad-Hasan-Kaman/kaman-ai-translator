@@ -105,14 +105,24 @@ class ModelDiscoveryTests(unittest.TestCase):
         self.server.catalog = {"data": [{"id": name, "capabilities": ["chat"]} for name in ("second-name", "first-name")]}
         self.assertEqual(self.engine()._discover_model(), "second-name")
 
-    def test_model_ids_alone_require_manual_entry(self):
+    def test_model_ids_alone_fall_back_to_first_entry(self):
+        # A catalog with no capability metadata anywhere (the norm for local
+        # servers such as Ollama and LM Studio) keeps the historical
+        # behavior: the first advertised model is selected.
         self.server.catalog = {"data": [{"id": "looks-like-a-chat-model"}]}
-        with self.assertRaisesRegex(core.TranslationError, "Settings -> Model"):
-            self.engine().generate("fixture")
-        self.assertEqual(len(self.server.requests), 1)
+        self.assertEqual(self.engine()._discover_model(), "looks-like-a-chat-model")
 
-    def test_string_model_list_requires_manual_entry(self):
-        self.assert_no_automatic_post({"models": ["chat-looking-name", "embedding-looking-name"]})
+    def test_string_model_list_falls_back_to_first_entry(self):
+        self.server.catalog = {"models": ["chat-looking-name", "embedding-looking-name"]}
+        self.assertEqual(self.engine()._discover_model(), "chat-looking-name")
+
+    def test_metadata_on_any_entry_disables_the_legacy_fallback(self):
+        # Once a server speaks capability metadata at all, entries without
+        # proof of chat support are never selected automatically.
+        self.assert_no_automatic_post({"data": [
+            {"id": "plain-first"},
+            {"id": "embedding-second", "capabilities": ["embeddings"]},
+        ]})
 
     def test_non_chat_catalog_requires_manual_entry(self):
         self.assert_no_automatic_post({"data": [{"id": "embedding", "capabilities": ["embedding"]},
@@ -167,7 +177,7 @@ class ModelDiscoveryTests(unittest.TestCase):
         self.assertEqual([r[0] for r in self.server.requests], ["GET"])
 
     def test_manual_selection_error_is_localized_for_both_ui_languages(self):
-        self.server.catalog = {"data": [{"id": "unknown"}]}
+        self.server.catalog = {"data": [{"id": "unknown", "capabilities": ["embeddings"]}]}
         for language in ("fa", "en"):
             with self.subTest(language=language):
                 core.set_language(language)

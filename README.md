@@ -115,7 +115,7 @@ The translator also works fully offline against a local OpenAI-compatible server
 | Engine | OpenAI-compatible | OpenAI-compatible |
 | Base URL | `http://localhost:11434/v1` | `http://localhost:1234/v1` |
 | API Key | `ollama` (placeholder) | `lm-studio` (placeholder) |
-| Model | A model you pulled, e.g. `llama3.1`; leave blank only if the server advertises explicit chat capability metadata | The loaded model's id; leave blank only if the server advertises explicit chat capability metadata |
+| Model | A model you pulled, e.g. `llama3.1`; leave blank to discover the first model advertised by the server | The loaded model's id; leave blank to discover the first model advertised by the server |
 
 - **LM Studio:** load a model, then start the server from the **Developer** tab before connecting.
 - **The API key is a placeholder for these two servers.** By default, Ollama and LM Studio do not authenticate local requests, so the key is never checked — it only has to be non-empty, because the OpenAI client requires one.
@@ -134,13 +134,17 @@ the app selects the first catalog entry that explicitly advertises chat support:
 These are optional server metadata conventions, not required OpenAI fields.
 Entries may use `id` or `name`, in the existing `data` or `models` list.
 
-If the catalog only lists IDs, has no known chat-capable entry, or contains only
-embedding/speech/image models, discovery stops with an actionable message.
-Enter the exact chat model ID in **Settings -> Model**, then use **Test connection**.
-This also applies to local servers that omit capability metadata. The app never
-guesses capability from a model name, probes models by sending translation text,
-or falls back to the first unknown entry. Chat metadata does not guarantee JSON
-output, translation quality, or vision support; Test connection still checks the
+If the catalog carries capability metadata but has no known chat-capable entry,
+or contains only embedding/speech/image models, discovery stops with an actionable
+message. Enter the exact chat model ID in **Settings -> Model**, then use
+**Test connection**.
+
+If the catalog carries no capability metadata at all — the norm for local servers
+such as Ollama and LM Studio — discovery keeps the historical behavior and selects
+the first advertised model, so local setups keep working with Model left blank.
+The app never guesses capability from a model name and never probes models by
+sending translation text. Chat metadata does not guarantee JSON output,
+translation quality, or vision support; Test connection still checks the
 selected model's structured output separately.
 
 ### 4. Security

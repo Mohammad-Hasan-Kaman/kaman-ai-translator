@@ -1456,7 +1456,10 @@ class OpenAICompatEngine(BaseEngine):
         )
 
     def _discover_model(self):
-        """Select the first explicitly chat-capable model, or require manual entry."""
+        """Select the first explicitly chat-capable model when the catalog
+        carries capability metadata. A catalog with no capability metadata at
+        all (typical for local servers such as Ollama and LM Studio) keeps the
+        historical behavior and selects the first advertised model."""
         if self.model:
             return self.model
         url = f"{self.base_url}/models"
@@ -1477,19 +1480,31 @@ class OpenAICompatEngine(BaseEngine):
         if not isinstance(items, list):
             items = []
         has_model_id = False
+        first_candidate = ""
+        metadata_seen = False
         for item in items:
             if isinstance(item, str):
-                has_model_id = has_model_id or bool(item.strip())
+                if item.strip():
+                    has_model_id = True
+                    first_candidate = first_candidate or item.strip()
                 continue
             if not isinstance(item, dict):
                 continue
+            if "capabilities" in item or "supported_endpoints" in item:
+                metadata_seen = True
             candidate = item.get("id") or item.get("name")
             if not isinstance(candidate, str) or not candidate.strip():
                 continue
             has_model_id = True
+            first_candidate = first_candidate or candidate.strip()
             if self._has_chat_capability(item):
                 self.model = candidate.strip()
                 return self.model
+        if has_model_id and not metadata_seen:
+            # No entry carries any capability metadata (the norm for local
+            # servers): preserve the pre-existing first-model behavior.
+            self.model = first_candidate
+            return self.model
         if has_model_id:
             raise TranslationError(msg("model_chat_not_identified"))
         raise TranslationError(
